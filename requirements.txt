@@ -1,3 +1,10 @@
-altair
-pandas
 streamlit
+openai
+chromadb
+PyPDF2
+pdfminer.six>=20221105
+pdf2image
+pytesseract
+typing_extensions
+pymupdf
+pdfplumber
