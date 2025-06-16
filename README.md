@@ -1,19 +1,17 @@
 ---
 title: HireScope
-emoji: 🚀
-colorFrom: red
-colorTo: red
-sdk: docker
-app_port: 8501
+emoji: 💼
+colorFrom: indigo
+colorTo: pink
+sdk: streamlit
+app_file: src/app.py
+pinned: false
+allow_upload: true
 tags:
 - streamlit
-pinned: false
-short_description: Streamlit template space
+- ai
+- resume
+short_description: 💼 HireScopeAI – AI-Powered Résumé Assistant
+thumbnail: >-
+  https://cdn-uploads.huggingface.co/production/uploads/66bba80bae11a6e8f7b7d565/Zn5ZfxMu28N3U1P2vaeZE.png
 ---
-
-# Welcome to Streamlit!
-
-Edit `/src/streamlit_app.py` to customize this app to your heart's desire. :heart:
-
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
