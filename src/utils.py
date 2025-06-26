@@ -1,34 +1,25 @@
-"""
-utils.py – shared helpers for HireScope
+# utils.py – shared helpers for HireScope
 
-• Reads OPENAI_API_KEY from env (HF Secret)
-• Uses persistent ChromaDB in /data/chroma_store on HF
-• Falls back to ./chroma_store locally (or in‑memory if /data isn't writable)
-• GPT‑4o résumé summariser
-• Candidate‑ID generator
-"""
 import os, re
 from datetime import datetime
 import streamlit as st
 import openai, chromadb
 from chromadb.utils import embedding_functions
 
-# ── 1. Secure API key ────────────────────────────────────────────────
+# ── 1. Load API key ───────────────────────────────────────────────
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     st.error("❌ OPENAI_API_KEY missing. Add it in Space ➜ Settings ➜ Secrets.")
     st.stop()
 openai.api_key = OPENAI_API_KEY
 
-# ── 2. Choose persistent directory ───────────────────────────────────
+# ── 2. Chroma persistence location ────────────────────────────────
 DEFAULT_LOCAL_DIR = "./chroma_store"
-HF_DATA_DIR       = "/data/chroma_store"          # Hugging Face Docker volume
+HF_DATA_DIR       = "/data/chroma_store"
 
-USE_HF_DIR = bool(os.getenv("SPACE_ID") or os.getenv("HF_SPACE_ID"))
-PERSIST_DIR = os.getenv("CHROMA_DB_DIR",
-                        HF_DATA_DIR if USE_HF_DIR else DEFAULT_LOCAL_DIR)
+USE_HF_DIR   = bool(os.getenv("SPACE_ID") or os.getenv("HF_SPACE_ID"))
+PERSIST_DIR  = os.getenv("CHROMA_DB_DIR", HF_DATA_DIR if USE_HF_DIR else DEFAULT_LOCAL_DIR)
 
-# ── 3. Create (or gracefully skip) the directory ─────────────────────
 @st.cache_resource
 def get_chroma_client():
     try:
@@ -36,9 +27,8 @@ def get_chroma_client():
         st.info(f"📂 Using persistent Chroma directory: {PERSIST_DIR}")
         return chromadb.PersistentClient(path=PERSIST_DIR)
     except PermissionError:
-        st.warning(f"⚠️ No write access to {PERSIST_DIR}. "
-                   "Falling back to in‑memory ChromaDB (data will reset on restart).")
-        return chromadb.Client()   # ephemeral
+        st.warning(f"⚠️ No write access to {PERSIST_DIR}. Falling back to in‑memory ChromaDB.")
+        return chromadb.Client()
 
 chroma_client = get_chroma_client()
 
@@ -47,33 +37,39 @@ def get_collection():
         name="resumes",
         embedding_function=embedding_functions.OpenAIEmbeddingFunction(
             api_key=OPENAI_API_KEY,
-            model_name="text-embedding-3-large",
+            model_name="text-embedding-3-large"
         )
     )
+
 collection = get_collection()
 
-# ── 4. GPT‑4o résumé summariser ──────────────────────────────────────
-def summarize_resume(raw: str) -> str:
-    prompt_path = os.path.join(os.path.dirname(__file__), "prompt_2.md")
-
+# ── 3. Load prompt_2.md into memory ───────────────────────────────
+@st.cache_resource
+def load_prompt_template(path="src/prompt_2.md"):
     try:
-        with open(prompt_path, "r", encoding="utf-8") as f:
-            template = f.read()
-    except FileNotFoundError:
-        st.error(f"❌ Missing `prompt_2.md` at {prompt_path}")
-        st.stop()
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        st.error(f"⚠️ Could not read prompt_2.md: {e}")
+        return ""
 
-    trimmed_raw = raw[:3000]
-    prompt = template.replace("{{RESUME_CONTENT}}", trimmed_raw)
+PROMPT_TEMPLATE = load_prompt_template()
 
-    resp = openai.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    return resp.choices[0].message.content.strip()
+# ── 4. GPT‑4o JSON résumé parser ──────────────────────────────────
+def summarize_resume(raw: str) -> str:
+    prompt = f"{PROMPT_TEMPLATE}\n\nRésumé:\n{raw[:3000]}"
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        st.error(f"❌ Error calling OpenAI: {e}")
+        return "{}"
 
-# ── 5. Candidate‑ID helper ───────────────────────────────────────────
+# ── 5. Candidate ID helper ────────────────────────────────────────
 def make_candidate_id(name: str) -> str:
     clean = re.sub(r"[^a-zA-Z0-9]", "", name.lower())
     return f"{clean}_{datetime.now():%Y%m%d%H%M%S}"
