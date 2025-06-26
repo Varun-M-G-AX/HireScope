@@ -4,7 +4,7 @@ emoji: 💼
 colorFrom: indigo
 colorTo: pink
 sdk: streamlit
-app_file: src/app.py
+app_file: src/HR_Chat_Bot.py
 pinned: false
 allow_upload: true
 tags:
