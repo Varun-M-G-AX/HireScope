@@ -17,6 +17,7 @@ if not hr_name:
 if files and len(files) > 10:
     st.error("⚠️ Upload 10 PDFs max."); st.stop()
 
+# ─────── extract text with multiple fallback strategies ───────
 def extract_all_text(pdf_bytes: bytes) -> str:
     text = ""
     try:
@@ -43,6 +44,7 @@ def extract_all_text(pdf_bytes: bytes) -> str:
         except: pass
     return text
 
+# ─────── extract name from summary text ───────
 def extract_candidate_name(summary: str, fallback_filename: str) -> str:
     patterns = [
         r"(?i)^name[:\-]?\s*(.+)$",
@@ -58,7 +60,7 @@ def extract_candidate_name(summary: str, fallback_filename: str) -> str:
             return line.strip()
     return re.sub(r"[_-]", " ", fallback_filename).rsplit(".", 1)[0]
 
-# ───────── Upload processing carousel ─────────
+# ─────── Process uploads ───────
 processed = set()
 if files:
     for idx, pdf in enumerate(files):
@@ -67,22 +69,26 @@ if files:
             try:
                 raw = extract_all_text(pdf.getvalue())
             except Exception as e:
-                st.error(f"❌ Could not read `{pdf.name}`: {e}"); continue
+                st.error(f"❌ Could not read `{pdf.name}`: {e}")
+                continue
 
             if not raw.strip():
-                st.error(f"❌ No text extracted from `{pdf.name}`."); continue
+                st.error(f"❌ No text extracted from `{pdf.name}`.")
+                continue
 
             with st.spinner("Summarising résumé…"):
                 summary = summarize_resume(raw)
 
             name = extract_candidate_name(summary, pdf.name)
             cid  = make_candidate_id(name)
-            if cid in processed: continue
+            if cid in processed:
+                continue
             processed.add(cid)
 
             if collection.get(where={"name": name})["ids"]:
                 if not st.checkbox(f"🔄 `{name}` exists. Overwrite?", key=f"ow_{cid}_{idx}"):
-                    st.info(f"Skipped `{name}`."); continue
+                    st.info(f"Skipped `{name}`.")
+                    continue
                 collection.delete(where={"name": name})
 
             collection.add(
@@ -90,8 +96,16 @@ if files:
                 metadatas=[{"candidate_id": cid, "name": name, "uploaded_by": hr_name}],
                 ids=[cid]
             )
-            if hasattr(chroma_client, "persist"): chroma_client.persist()
+            if hasattr(chroma_client, "persist"):
+                chroma_client.persist()
 
             st.success(f"✅ Stored résumé for **{name}** (ID: `{cid}`)")
-            with st.expander("📑 Raw extracted text"): st.text_area("Raw", raw, 250)
-            st.text_area("Structured Summary", summary, 230)
+
+            # ─────── Show raw and summary side-by-side
+            col1, col2 = st.columns(2)
+            with col1:
+                with st.expander("📑 Raw Extracted Text"):
+                    st.text_area("Raw Text", raw, height=300, key=f"raw_{cid}")
+            with col2:
+                with st.expander("📋 Structured Summary"):
+                    st.text_area("Résumé Summary", summary, height=300, key=f"sum_{cid}")
