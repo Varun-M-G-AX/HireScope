@@ -3,13 +3,11 @@ from datetime import datetime
 from utils import collection, openai
 
 st.set_page_config(page_title="Chat with Résumés", page_icon="💬")
-
 st.title("💬 HireScope Chat Space")
 
 # ──────────────────────────────────────────────────────────────
 # Chat session management
 # ──────────────────────────────────────────────────────────────
-
 if "all_chats" not in st.session_state:
     st.session_state.all_chats = {}
 
@@ -27,23 +25,25 @@ if "active_chat" not in st.session_state:
     }]
 
 # ──────────────────────────────────────────────────────────────
-# Sidebar for chat session selection + rename
+# Sidebar: select, rename, create chats
 # ──────────────────────────────────────────────────────────────
-
 st.sidebar.subheader("💬 Chat Sessions")
 
 # Rename current chat
-new_name = st.sidebar.text_input("📝 Rename this chat", value=st.session_state.active_chat)
-if new_name != st.session_state.active_chat:
-    st.session_state.all_chats[new_name] = st.session_state.all_chats.pop(st.session_state.active_chat)
+current = st.session_state.active_chat
+new_name = st.sidebar.text_input("📝 Rename this chat", value=current)
+if new_name != current and new_name.strip() and new_name not in st.session_state.all_chats:
+    st.session_state.all_chats[new_name] = st.session_state.all_chats.pop(current)
     st.session_state.active_chat = new_name
 
-# Select existing chat
-selected = st.sidebar.selectbox("📂 Select Chat", list(st.session_state.all_chats.keys()), index=list(st.session_state.all_chats.keys()).index(st.session_state.active_chat))
+# Switch chats
+chat_names = list(st.session_state.all_chats.keys())
+selected = st.sidebar.selectbox("📂 Select Chat", options=chat_names,
+                                index=chat_names.index(st.session_state.active_chat))
 if selected != st.session_state.active_chat:
     st.session_state.active_chat = selected
 
-# Create new chat
+# New chat
 if st.sidebar.button("➕ New Chat"):
     name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
     st.session_state.active_chat = name
@@ -60,16 +60,14 @@ if st.sidebar.button("➕ New Chat"):
 chat = st.session_state.all_chats[st.session_state.active_chat]
 
 # ──────────────────────────────────────────────────────────────
-# Display chat history
+# Show history
 # ──────────────────────────────────────────────────────────────
-
-for msg in chat[1:]:  # skip system message
+for msg in chat[1:]:
     st.chat_message(msg["role"]).markdown(msg["content"])
 
 # ──────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────
-
 def is_greeting(text: str) -> bool:
     return bool(re.fullmatch(r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*", text.strip(), re.I))
 
@@ -92,9 +90,9 @@ def is_recruitment_query(query: str) -> bool:
 # ──────────────────────────────────────────────────────────────
 # Input prompt
 # ──────────────────────────────────────────────────────────────
-
 total = collection.count()
 query = st.chat_input("Ask anything about candidates…")
+
 if query:
     st.chat_message("user").markdown(query)
     chat.append({"role": "user", "content": query})
@@ -103,7 +101,7 @@ if query:
         reply = "You're welcome! How can I assist you with candidate information?"
     else:
         relevant = is_recruitment_query(query)
-        hits = collection.query(query_texts=[query], n_results=min(5, total))
+        hits = collection.query(query_texts=[query], n_results=max(1, min(5, total)))
         docs = hits["documents"][0]
 
         if docs and any(d.strip() for d in docs):
