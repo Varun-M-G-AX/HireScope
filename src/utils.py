@@ -54,14 +54,15 @@ collection = get_collection()
 
 # ── 4. GPT‑4o résumé summariser ──────────────────────────────────────
 def summarize_resume(raw: str) -> str:
+    prompt_path = os.path.join(os.path.dirname(__file__), "prompt_2.md")
+
     try:
-        with open("prompt_2.md", "r", encoding="utf-8") as f:
+        with open(prompt_path, "r", encoding="utf-8") as f:
             template = f.read()
     except FileNotFoundError:
-        st.error("❌ Missing `prompt_2.md` file.")
+        st.error(f"❌ Missing `prompt_2.md` at {prompt_path}")
         st.stop()
 
-    # Trim to max token limit for GPT-4o context
     trimmed_raw = raw[:3000]
     prompt = template.replace("{{RESUME_CONTENT}}", trimmed_raw)
 
