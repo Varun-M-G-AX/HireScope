@@ -54,24 +54,17 @@ collection = get_collection()
 
 # ── 4. GPT‑4o résumé summariser ──────────────────────────────────────
 def summarize_resume(raw: str) -> str:
-    prompt = f"""
-Return the résumé as structured **plain text** (NOT JSON) like:
+    try:
+        with open("prompt_2.md", "r", encoding="utf-8") as f:
+            template = f.read()
+    except FileNotFoundError:
+        st.error("❌ Missing `prompt_2.md` file.")
+        st.stop()
 
-Name: ...
-Email: ...
-Phone: ...
-Location: ...
-Skills: python, sql, ...
-Languages: english, ...
-Certifications: ...
-Education:
-  • Degree at University
-Work Experience:
-  • Role at Company (dates) – short summary
-Latest Role: ...
+    # Trim to max token limit for GPT-4o context
+    trimmed_raw = raw[:3000]
+    prompt = template.replace("{{RESUME_CONTENT}}", trimmed_raw)
 
-Résumé:
-\"\"\"{raw[:3000]}\"\"\""""
     resp = openai.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
