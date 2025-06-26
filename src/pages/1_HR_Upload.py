@@ -9,15 +9,18 @@ from utils import summarize_resume, make_candidate_id, chroma_client, collection
 st.set_page_config(page_title="Résumé Upload", page_icon="📂")
 st.title("📂 HR Résumé Uploader")
 
+# ───────────── HR name & file input
 hr_name = st.text_input("Your (HR) name")
 files = st.file_uploader("Upload up to 10 résumé PDFs", type="pdf", accept_multiple_files=True)
 
 if not hr_name:
-    st.warning("Enter your name first."); st.stop()
+    st.warning("Enter your name first.")
+    st.stop()
 if files and len(files) > 10:
-    st.error("⚠️ Upload 10 PDFs max."); st.stop()
+    st.error("⚠️ Upload 10 PDFs max.")
+    st.stop()
 
-# ─────── extract text with multiple fallback strategies ───────
+# ───────────── Text extraction pipeline
 def extract_all_text(pdf_bytes: bytes) -> str:
     text = ""
     try:
@@ -44,7 +47,7 @@ def extract_all_text(pdf_bytes: bytes) -> str:
         except: pass
     return text
 
-# ─────── extract name from summary text ───────
+# ───────────── Name extractor
 def extract_candidate_name(summary: str, fallback_filename: str) -> str:
     patterns = [
         r"(?i)^name[:\-]?\s*(.+)$",
@@ -60,33 +63,26 @@ def extract_candidate_name(summary: str, fallback_filename: str) -> str:
             return line.strip()
     return re.sub(r"[_-]", " ", fallback_filename).rsplit(".", 1)[0]
 
-# ─────── Process uploads ───────
-processed = set()
+# ───────────── Initialize session state
+if "processed_results" not in st.session_state:
+    st.session_state.processed_results = []
+    st.session_state.current_slide = 0
+
+# ───────────── Process uploads
 if files:
-    for idx, pdf in enumerate(files):
-        with st.container(border=True):
-            st.markdown(f"### 📄 Processing `{pdf.name}`")
-            try:
-                raw = extract_all_text(pdf.getvalue())
-            except Exception as e:
-                st.error(f"❌ Could not read `{pdf.name}`: {e}")
-                continue
-
+    for pdf in files:
+        try:
+            raw = extract_all_text(pdf.getvalue())
             if not raw.strip():
-                st.error(f"❌ No text extracted from `{pdf.name}`.")
+                st.warning(f"❌ No text from `{pdf.name}`.")
                 continue
 
-            with st.spinner("Summarising résumé…"):
-                summary = summarize_resume(raw)
-
+            summary = summarize_resume(raw)
             name = extract_candidate_name(summary, pdf.name)
-            cid  = make_candidate_id(name)
-            if cid in processed:
-                continue
-            processed.add(cid)
+            cid = make_candidate_id(name)
 
             if collection.get(where={"name": name})["ids"]:
-                if not st.checkbox(f"🔄 `{name}` exists. Overwrite?", key=f"ow_{cid}_{idx}"):
+                if not st.checkbox(f"🔄 `{name}` exists. Overwrite?", key=f"ow_{cid}"):
                     st.info(f"Skipped `{name}`.")
                     continue
                 collection.delete(where={"name": name})
@@ -99,13 +95,40 @@ if files:
             if hasattr(chroma_client, "persist"):
                 chroma_client.persist()
 
-            st.success(f"✅ Stored résumé for **{name}** (ID: `{cid}`)")
+            st.session_state.processed_results.append({
+                "pdf_name": pdf.name,
+                "raw": raw,
+                "summary": summary,
+                "cid": cid,
+                "name": name
+            })
+            st.session_state.current_slide = len(st.session_state.processed_results) - 1
 
-            # ─────── Show raw and summary side-by-side
-            col1, col2 = st.columns(2)
-            with col1:
-                with st.expander("📑 Raw Extracted Text"):
-                    st.text_area("Raw Text", raw, height=300, key=f"raw_{cid}")
-            with col2:
-                with st.expander("📋 Structured Summary"):
-                    st.text_area("Résumé Summary", summary, height=300, key=f"sum_{cid}")
+        except Exception as e:
+            st.error(f"❌ Could not read `{pdf.name}`: {e}")
+
+# ───────────── Show one résumé card at a time
+slides = st.session_state.processed_results
+if slides:
+    i = st.session_state.current_slide
+    slide = slides[i]
+
+    with st.container(border=True):
+        st.markdown(f"### 📄 Processing `{slide['pdf_name']}`")
+        st.success(f"✅ Stored résumé for **{slide['name']}** (ID: `{slide['cid']}`)")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            with st.expander("📑 Raw Extracted Text", expanded=False):
+                st.text_area("Raw", slide["raw"], height=280, key=f"raw_{i}")
+        with col2:
+            with st.expander("📋 Structured Summary", expanded=False):
+                st.text_area("Summary", slide["summary"], height=280, key=f"summary_{i}")
+
+        colL, colR = st.columns(2)
+        with colL:
+            if st.button("◀️ Previous", disabled=i <= 0):
+                st.session_state.current_slide = max(i - 1, 0)
+        with colR:
+            if st.button("Next ▶️", disabled=i >= len(slides) - 1):
+                st.session_state.current_slide = min(i + 1, len(slides) - 1)
