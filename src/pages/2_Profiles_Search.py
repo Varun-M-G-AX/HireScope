@@ -4,7 +4,7 @@ from utils import collection, chroma_client # Ensure these are correctly importe
 
 st.set_page_config(
     page_title="HireScope - Candidate Profiles",
-    page_icon="💼",
+    page_icon="📇", # Changed to a more fitting icon for profiles
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -77,38 +77,51 @@ with card_container:
         
         for idx, (meta, doc, original_index) in enumerate(filtered_candidates):
             with cols[idx % num_cols]: # Distribute cards evenly across columns
-                # Replaced st.card() with st.container(border=True) for compatibility
-                with st.container(border=True): # Use st.container(border=True) for a nice visual container
+                # Use st.container(border=True) for a nice visual card-like container
+                with st.container(border=True): 
                     st.markdown(f"### 👤 {meta.get('name', 'Unknown')}")
                     st.caption(f"ID: `{meta['candidate_id']}`")
                     st.caption(f"Uploaded by: {meta.get('uploaded_by', 'N/A')}")
                     st.markdown("---") # Separator
 
-                    # View Summary Button and Expander
+                    # View Details Button and Expander
                     # Use a unique key based on the original_index to avoid conflicts
                     view_expander_key = f"view_expander_{original_index}"
                     
-                    # Check if the expander should be open (e.g., if it was open on previous rerun)
-                    # Note: st.button click will trigger a rerun, and then the expander state will be read.
-                    if st.button("👁️ View Summary", key=f"view_btn_{original_index}", use_container_width=True):
-                        # Toggle the expander state in session_state
-                        st.session_state[view_expander_key] = not st.session_state.get(view_expander_key, False)
-                        # Rerun is needed here to immediately reflect the expander state change
-                        st.rerun()
+                    # Initialize expander state in session_state if not present
+                    if view_expander_key not in st.session_state:
+                        st.session_state[view_expander_key] = False
 
-                    # The expander itself
+                    # Button to toggle the expander
+                    if st.button("👁️ View Details", key=f"view_btn_{original_index}", use_container_width=True):
+                        st.session_state[view_expander_key] = not st.session_state[view_expander_key]
+                        st.rerun() # Rerun to immediately reflect the expander state change
+
+                    # The expander itself, conditionally displayed
                     if st.session_state.get(view_expander_key, False):
-                        with st.expander("Résumé Summary", expanded=True):
-                            # Attempt to pretty-print JSON if the summary is valid JSON
-                            try:
-                                summary_json = json.loads(doc)
-                                st.json(summary_json)
-                            except json.JSONDecodeError:
-                                st.text_area("AI-Generated Summary", doc, height=250, disabled=True, key=f"summary_display_{original_index}")
-                            st.markdown("---")
-                            st.markdown("*(Note: For full raw text, please refer to the 'Upload Résumés' page if original raw text was not stored in ChromaDB.)*")
+                        with st.expander("Résumé Details", expanded=True):
+                            tab1, tab2 = st.tabs(["AI Summary", "Raw Text (Not Stored)"])
+                            
+                            with tab1:
+                                st.write("**AI-Generated Summary:**")
+                                # Attempt to pretty-print JSON if the summary is valid JSON
+                                try:
+                                    summary_json = json.loads(doc)
+                                    st.json(summary_json)
+                                except json.JSONDecodeError:
+                                    st.text_area("AI-Generated Summary", doc, height=250, disabled=True, key=f"summary_display_{original_index}")
+                            
+                            with tab2:
+                                st.write("**Raw Extracted Text:**")
+                                st.info(
+                                    "The full raw text of the résumé is not stored in the database for this view. "
+                                    "It is processed for summarization and embeddings. "
+                                    "For raw text review, please refer to the 'Upload Résumés' page after upload."
+                                )
+                                # You could display the summary here again as a placeholder if desired
+                                # st.text_area("Raw Text Placeholder", doc, height=250, disabled=True, key=f"raw_text_placeholder_{original_index}")
                         
-                    st.markdown("<br>", unsafe_allow_html=True) # Add some space
+                    st.markdown("<br>", unsafe_allow_html=True) # Add some space below the expander
 
                     # Delete Logic
                     delete_confirmation_key = f"confirm_delete_{original_index}"
