@@ -7,7 +7,7 @@ from utils import summarize_resume, make_candidate_id, chroma_client, collection
 
 st.set_page_config(page_title="Résumé Upload", page_icon="📂", layout="wide")
 
-# ── Styles for dark/light and animations
+# ─────────────── CSS: Dark-mode & animations ───────────────
 st.markdown("""
 <style>
 .upload-header {
@@ -17,19 +17,16 @@ st.markdown("""
     color: white;
     margin-bottom: 1.5rem;
 }
-
 .processing-item, .success-item, .error-item {
-    background: var(--background-secondary);
+    background: var(--background-color);
     border-left: 4px solid var(--primary-color);
     padding: 1rem;
     margin: 0.5rem 0;
     border-radius: 5px;
     animation: slideIn 0.3s ease-out;
 }
-
 .success-item { border-color: #28a745; }
 .error-item { border-color: #dc3545; }
-
 .text-preview {
     background: var(--background-secondary);
     border: 1px solid var(--secondary-background-color);
@@ -41,7 +38,6 @@ st.markdown("""
     overflow-y: auto;
     white-space: pre-wrap;
 }
-
 @keyframes slideIn {
     from { transform: translateX(-20px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
@@ -49,7 +45,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Header
+# ─────────────── Header ───────────────
 st.markdown("""
 <div class="upload-header">
     <h1>📂 HR Résumé Uploader</h1>
@@ -57,18 +53,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Session state
+# ─────────────── Session Setup ───────────────
 if "results" not in st.session_state:
     st.session_state.results = []
 if "stats" not in st.session_state:
     st.session_state.stats = {"processed": 0, "errors": 0}
 
-# ── Input
+# ─────────────── Input ───────────────
 col1, col2 = st.columns([3, 1])
 with col1:
     hr_name = st.text_input("👤 Your (HR) Name", placeholder="e.g., Jane Doe")
     files = st.file_uploader("📎 Upload Résumé PDFs (max 10)", type="pdf", accept_multiple_files=True)
-
 with col2:
     st.metric("✅ Processed", st.session_state.stats["processed"])
     st.metric("❌ Errors", st.session_state.stats["errors"])
@@ -80,7 +75,7 @@ if files and len(files) > 10:
     st.error("⚠️ Maximum 10 files allowed.")
     st.stop()
 
-# ── Text extraction fallback pipeline
+# ─────────────── Extraction Helper ───────────────
 def extract_all_text(pdf_bytes: bytes) -> str:
     methods = [
         lambda: "\n".join(p.get_text() for p in fitz.open(stream=pdf_bytes, filetype="pdf")),
@@ -92,58 +87,53 @@ def extract_all_text(pdf_bytes: bytes) -> str:
     for m in methods:
         try:
             txt = m()
-            if txt.strip():
-                return txt
+            if txt.strip(): return txt
         except: pass
     return ""
 
-# ── Extract name fallback helper
+# ─────────────── Name Extraction ───────────────
 def extract_candidate_name(summary: str, fallback_filename: str) -> str:
     patterns = [
         r"(?i)^name[:\-]?\s*(.+)$",
-        r"(?i)^candidate name[:\-]?\s*(.+)$",
         r"(?i)^full name[:\-]?\s*(.+)$",
+        r"(?i)^candidate name[:\-]?\s*(.+)$"
     ]
     for pat in patterns:
-        m = re.search(pat, summary, re.M)
-        if m: return m.group(1).strip()
+        match = re.search(pat, summary, re.M)
+        if match:
+            return match.group(1).strip()
     for line in summary.splitlines():
         line = line.strip("-• \t")
-        if re.fullmatch(r"[A-Z][A-Za-z .'-]{3,}", line): return line.strip()
-    return re.sub(r"[_-]", " ", fallback_filename).rsplit(".", 1)[0]
+        if re.fullmatch(r"[A-Z][A-Za-z .'-]{3,}", line):
+            return line.strip()
+    return re.sub(r"[_\-]", " ", fallback_filename).rsplit(".", 1)[0]
 
-# ── Process uploads
+# ─────────────── Process Uploads ───────────────
 processed_ids = set()
 if files:
     bar = st.progress(0)
-    total = len(files)
-
     for idx, pdf in enumerate(files):
-        pdf_bytes = pdf.getvalue()
-        bar.progress((idx + 1) / total)
-
-        with st.container():
-            st.markdown(f'<div class="processing-item">🔄 Processing <code>{pdf.name}</code></div>', unsafe_allow_html=True)
-
         try:
+            pdf_bytes = pdf.getvalue()
             raw = extract_all_text(pdf_bytes)
-            if not raw.strip(): raise Exception("No extractable text")
+            if not raw.strip():
+                raise Exception("No extractable text")
 
-            with st.spinner("Summarising résumé with GPT‑4o…"):
+            with st.spinner("Summarising résumé…"):
                 summary = summarize_resume(raw)
 
             name = extract_candidate_name(summary, pdf.name)
             cid = make_candidate_id(name)
-            if cid in processed_ids: continue
+            if cid in processed_ids:
+                continue
             processed_ids.add(cid)
 
-            # Check if exists
             if collection.get(where={"name": name})["ids"]:
                 if not st.checkbox(f"🔄 `{name}` exists. Overwrite?", key=f"ow_{cid}_{idx}"):
-                    st.info(f"Skipped `{name}`."); continue
+                    st.info(f"Skipped `{name}`")
+                    continue
                 collection.delete(where={"name": name})
 
-            # Store in ChromaDB
             collection.add(
                 documents=[summary],
                 metadatas=[{"candidate_id": cid, "name": name, "uploaded_by": hr_name}],
@@ -151,42 +141,46 @@ if files:
             )
             if hasattr(chroma_client, "persist"): chroma_client.persist()
 
-            # Save results
             st.session_state.results.append({
                 "name": name,
                 "cid": cid,
                 "filename": pdf.name,
-                "raw": raw.strip(),
-                "summary": summary.strip()
+                "raw": raw[:1200],
+                "summary": summary[:1200]
             })
             st.session_state.stats["processed"] += 1
 
-            st.markdown(f'<div class="success-item">✅ Stored résumé for <b>{name}</b> (ID: <code>{cid}</code>)</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="success-item">
+                ✅ Stored résumé for <b>{name}</b> (ID: <code>{cid}</code>)
+            </div>""", unsafe_allow_html=True)
 
         except Exception as e:
             st.session_state.stats["errors"] += 1
-            st.markdown(f'<div class="error-item">❌ Error with `{pdf.name}`: {str(e)}</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="error-item">❌ Error in `{pdf.name}` – {str(e)}</div>
+            """, unsafe_allow_html=True)
 
-    bar.progress(1.0)
+        bar.progress((idx + 1) / len(files))
 
-# ── Results
+# ─────────────── Show Results ───────────────
 if st.session_state.results:
     st.subheader("📄 Processed Résumés")
     for i, r in enumerate(st.session_state.results):
         with st.expander(f"👤 {r['name']} – {r['filename']}"):
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("**📃 Raw Text:**")
+                st.markdown("**📃 Raw Text Preview:**")
                 st.markdown(f'<div class="text-preview">{r["raw"]}</div>', unsafe_allow_html=True)
             with col2:
                 st.markdown("**📋 Summary:**")
                 st.markdown(f'<div class="text-preview">{r["summary"]}</div>', unsafe_allow_html=True)
 
-    colA, colB = st.columns(2)
-    with colA:
+    col1, col2 = st.columns(2)
+    with col1:
         if st.button("🔄 Upload More Résumés"):
             pass
-    with colB:
+    with col2:
         if st.button("🗑️ Clear All Results"):
             st.session_state.results.clear()
             st.session_state.stats = {"processed": 0, "errors": 0}
