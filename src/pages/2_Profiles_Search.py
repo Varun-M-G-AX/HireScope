@@ -42,7 +42,6 @@ def matches(meta, doc):
 st.markdown("---")
 st.subheader("Candidate List")
 
-# Change 2 to 3 for 3-column grid
 cols = st.columns(2)
 
 for idx, (meta, doc) in enumerate(zip(metas, docs)):
@@ -53,7 +52,10 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
     uploaded_by = meta.get('uploaded_by', 'N/A')
     upload_date = meta.get('upload_timestamp', 'N/A')
     candidate_id = meta.get('candidate_id', '')
-    initials = "".join([w[0] for w in name.split() if w and w[0].isalpha()]).upper()[:2] if name and name != "Unknown" else "👤"
+
+    # Avatar logic: use avatar_url if present, else initials
+    avatar_url = meta.get('avatar_url')
+    initials = "".join([w[0] for w in name.split() if w and w[0].isalpha()]).upper()[:2] or "👤"
 
     email = phone = linkedin = None
     summary_json = None
@@ -68,10 +70,20 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
     col = cols[idx % len(cols)]
     with col:
         with st.container(border=True):
-            # Header
-            st.markdown(f"**{name}**")
-            st.caption(f"ID: {candidate_id}")
-            st.caption(f"Uploaded by: **{uploaded_by}** · {upload_date}")
+            avatar_col, info_col = st.columns([1, 5])
+            with avatar_col:
+                if avatar_url:
+                    st.image(avatar_url, width=56)
+                else:
+                    # Render colored circle with initials using st.write and markdown
+                    st.markdown(
+                        f'<div style="width:56px;height:56px;border-radius:50%;background:#5a5e6b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.7rem;border:2px solid #3b3e47;">{initials}</div>',
+                        unsafe_allow_html=True
+                    )
+            with info_col:
+                st.markdown(f"**{name}**")
+                st.caption(f"ID: {candidate_id}")
+                st.caption(f"Uploaded by: **{uploaded_by}** · {upload_date}")
 
             # Contact info
             if email:
@@ -82,32 +94,37 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
                 st.markdown(f'🔗 [LinkedIn]({linkedin})')
 
             # Buttons row
-            bcol1, bcol2 = st.columns(2)
+            bcol1, bcol2 = st.columns([1, 1])
             with bcol1:
                 view_summary = st.button("📄 View Summary", key=f"view_{idx}")
             with bcol2:
                 delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}")
 
-            # Summary modal
+            # Summary modal - fixed height, scrollable box inside the card
             if view_summary:
-                with st.expander(f"Summary for {name}", expanded=True):
-                    st.write("")  # space
-                    if summary_json:
-                        # Use a fixed height box for JSON
-                        st.json(summary_json, expanded=False)
-                    else:
-                        st.text_area("Summary", value=doc, height=220, disabled=True)
+                st.markdown("**Summary**")
+                # The st.json widget will always expand, so instead, use st.code in a scrollable st.container
+                if summary_json:
+                    summary_str = json.dumps(summary_json, indent=2, ensure_ascii=False)
+                else:
+                    summary_str = doc
+                # Scrollable code/text area
+                st.markdown(
+                    f"<div style='max-height:300px;overflow:auto;background:#1e222d;padding:10px;border-radius:7px;border:1px solid #444;'>"
+                    f"<pre style='font-size: 0.93rem; color: #eee;'>{summary_str}</pre></div>",
+                    unsafe_allow_html=True
+                )
 
             # Delete confirmation
             if delete_candidate:
-                with st.expander(f"Confirm delete {name}?", expanded=True):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("✅ Confirm", key=f"confirm_{idx}"):
-                            collection.delete(ids=[meta['candidate_id']])
-                            if hasattr(chroma_client, "persist"):
-                                chroma_client.persist()
-                            st.success(f"Deleted {name}.")
-                            st.rerun()
-                    with c2:
-                        st.button("❌ Cancel", key=f"cancel_{idx}")
+                st.warning(f"Delete {name}? This cannot be undone.")
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button("✅ Confirm", key=f"confirm_{idx}"):
+                        collection.delete(ids=[meta['candidate_id']])
+                        if hasattr(chroma_client, "persist"):
+                            chroma_client.persist()
+                        st.success(f"Deleted {name}.")
+                        st.rerun()
+                with c2:
+                    st.button("❌ Cancel", key=f"cancel_{idx}")
