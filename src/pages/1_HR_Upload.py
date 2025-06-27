@@ -1,258 +1,311 @@
-import io
 import re
 import streamlit as st
-import fitz  # PyMuPDF
-import pdfplumber
-import PyPDF2
-from pdfminer.high_level import extract_text
-from pdf2image import convert_from_bytes
-import pytesseract
+from datetime import datetime
 
-# Assume these are defined in your utils.py
-from utils import summarize_resume, make_candidate_id, chroma_client, collection
+# Import collection and the openai module directly from utils.py
+# Ensure utils.py is in the same directory or accessible via PYTHONPATH
+from utils import collection, openai
 
-# --- 1. PAGE CONFIGURATION & THEME ---
-# Sets up the page with a title, icon, wide layout, and a custom theme.
-# The theme is designed to work well in both light and dark modes with a blue accent.
+# --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="HireFlow - Résumé Uploader",
-    page_icon="📂",
+    page_title="HireScope Chat",
+    page_icon="💬",
     layout="wide",
-    initial_sidebar_state="collapsed",
-    menu_items={
-        'About': "HireFlow: AI-Powered Résumé Processor"
-    }
+    initial_sidebar_state="expanded"
 )
 
-# --- 2. CORE FUNCTIONS ---
-# Robust text extraction pipeline trying multiple methods for reliability.
-def extract_all_text(pdf_bytes: bytes) -> str:
-    """Chain-tries multiple PDF text extractors, including an OCR fallback."""
-    text = ""
-    # Method 1: PyMuPDF (fitz) - Often the most reliable
-    try:
-        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-            text = "\n".join(p.get_text() for p in doc)
-    except Exception:
-        pass
-    if text.strip(): return text
+# --- 2. SESSION STATE MANAGEMENT ---
+# Initialize session state for multi-chat management.
+# "all_chats" stores a dictionary of chat sessions, keyed by their unique IDs.
+# Each chat session contains a "name" and a list of "messages".
+if "all_chats" not in st.session_state:
+    st.session_state.all_chats = {}
 
-    # Method 2: pdfminer.six
-    try:
-        text = extract_text(io.BytesIO(pdf_bytes))
-    except Exception:
-        pass
-    if text.strip(): return text
+# "active_chat_id" tracks the currently selected chat session.
+if "active_chat_id" not in st.session_state:
+    # Create a default first chat if none exists
+    chat_id = f"chat_{datetime.now().timestamp()}" # Unique ID for the chat
+    st.session_state.active_chat_id = chat_id
+    st.session_state.all_chats[chat_id] = {
+        "name": f"New Chat - {datetime.now():%Y-%m-%d %H:%M}", # Default name
+        "messages": [] # Start with an empty list of messages
+    }
 
-    # Method 3: pdfplumber
-    try:
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-            text = "\n".join(p.extract_text() or "" for p in pdf.pages)
-    except Exception:
-        pass
-    if text.strip(): return text
+# The system prompt is a constant and defines the AI's persona and rules.
+# It's not stored in the chat history itself but prepended to each API call.
+SYSTEM_PROMPT = (
+    "You are an expert recruiting assistant for HireScope. Your name is 'ScopeAI'. "
+    "You must answer questions based *only* on the provided résumé context for the candidates. "
+    "Be concise and professional. When asked to compare candidates, create a markdown table. "
+    "If the provided résumés do not contain the answer, say 'The provided résumés do not contain information on this topic.' "
+    "If the user's query is unrelated to recruiting, candidates, or the provided context, politely state: "
+    "'I can only answer questions about candidates based on their résumés.'"
+)
 
-    # Method 4: PyPDF2
-    try:
-        reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
-        text = "".join(p.extract_text() or "" for p in reader.pages)
-    except Exception:
-        pass
-    if text.strip(): return text
+# --- 3. CORE LOGIC (RAG ENGINE) ---
+def get_rag_response(query: str, chat_history_for_llm: list):
+    """
+    Retrieves relevant context from ChromaDB based on the user's query
+    and generates an AI response using the OpenAI LLM.
 
-    # Method 5: OCR Fallback (Tesseract) for image-based PDFs
-    try:
-        images = convert_from_bytes(pdf_bytes, dpi=300)
-        text = "\n".join(pytesseract.image_to_string(img) for img in images)
-    except Exception:
-        pass
-    return text
+    Args:
+        query (str): The user's current query.
+        chat_history_for_llm (list): A list of previous messages (role, content)
+                                     to provide conversational context to the LLM.
 
-# Improved name extraction with more robust patterns.
-def extract_candidate_name(summary: str, fallback_filename: str) -> str:
-    """Extracts candidate name from summary, with fallback to filename."""
-    # Regex patterns looking for "Name: John Doe" type formats.
-    patterns = [
-        r"(?i)^name[:\-]?\s*(.+)$",
-        r"(?i)^candidate(?: name)?[:\-]?\s*(.+)$",
-        r"(?i)^full name[:\-]?\s*(.+)$",
+    Returns:
+        tuple: A tuple containing the AI's response (str) and a list of
+               source metadatas (list of dicts).
+    """
+    # 1. Retrieve relevant résumé snippets from the vector database (ChromaDB)
+    try:
+        total_docs = collection.count()
+        if total_docs == 0:
+            return (
+                "My knowledge base is empty. Please upload some résumés first "
+                "using the 'Upload Résumés' page to enable candidate queries."
+            ), []
+            
+        # Query ChromaDB for documents most similar to the user's query
+        # Retrieve up to 5 relevant documents, or fewer if total_docs is less than 5
+        results = collection.query(
+            query_texts=[query],
+            n_results=min(5, total_docs)
+        )
+        context_docs = results.get("documents", [[]])[0] # Extracted text content
+        metadatas = results.get("metadatas", [[]])[0]   # Associated metadata (e.g., candidate name, ID)
+            
+        if not context_docs or all(not d.strip() for d in context_docs):
+            return (
+                "I couldn't find any résumés in my database that directly match your query. "
+                "Please try rephrasing it or ensure relevant résumés have been uploaded."
+            ), []
+
+    except Exception as e:
+        st.error(f"Database query failed: {e}")
+        return "I am having trouble accessing the candidate database right now. Please try again later.", []
+
+    # 2. Construct the full prompt for the LLM, including the retrieved context
+    context = "\n\n---\n\n".join(context_docs)
+    prompt_with_context = (
+        f"**Résumé Context:**\n{context}\n\n"
+        f"**User Query:**\n{query}"
+    )
+        
+    # 3. Create the message list for the OpenAI API call
+    # This list includes the system prompt, historical chat messages, and the current user query with context.
+    messages_for_api = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        *chat_history_for_llm, # Unpack past messages for conversational context
+        {"role": "user", "content": prompt_with_context}
     ]
-    for pat in patterns:
-        m = re.search(pat, summary, re.M)
-        if m: return m.group(1).strip()
-    
-    # Heuristic: Find a capitalized name-like string in the first few lines.
-    for line in summary.splitlines()[:5]:
-        line = line.strip("-• \t")
-        # Matches "John Doe", "J. Doe", "John Fitzgerald Doe"
-        if re.fullmatch(r"[A-Z][a-zA-Z.'-]{1,}(?:\s[A-Z][a-zA-Z.'-]{1,})+", line):
-            return line.strip()
-            
-    # Fallback: Clean up the PDF filename.
-    clean_name = re.sub(r"[_-]", " ", fallback_filename).rsplit(".", 1)[0]
-    return clean_name.title()
 
+    # 4. Call the OpenAI LLM (GPT-4o) to generate a response
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=messages_for_api,
+            temperature=0.0 # Low temperature for factual, grounded answers based on context
+        )
+        reply = response.choices[0].message.content
+        return reply, metadatas # Return the AI's answer and the sources (metadata) used
+    except Exception as e:
+        st.error(f"Error communicating with the AI model: {e}")
+        return "I'm sorry, I encountered an error while generating a response. Please check your OpenAI API key or try again later.", []
 
-# --- 3. SESSION STATE INITIALIZATION ---
-# Using session state to hold data across reruns.
-if "staged_files" not in st.session_state:
-    st.session_state.staged_files = []
-if "final_results" not in st.session_state:
-    st.session_state.final_results = []
-if "errors" not in st.session_state:
-    st.session_state.errors = []
+# --- Helper Functions for Chat Logic ---
+def is_greeting(text: str) -> bool:
+    """Checks if the input text is a simple greeting."""
+    return bool(re.fullmatch(r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*", text.strip(), re.I))
 
-
-# --- 4. UI: HEADER AND INPUT FORM ---
-st.title("HireFlow Résumé Processor")
-st.markdown("Upload candidate résumés to automatically extract, summarize, and store their information.")
-
-with st.container(border=True):
-    st.subheader("Step 1: Upload Your Files")
-    hr_name = st.text_input("👤 Your Name (HR Representative)", placeholder="e.g., Maria Garcia")
-    files = st.file_uploader(
-        "📂 Upload up to 10 résumé PDFs",
-        type="pdf",
-        accept_multiple_files=True
+def is_recruitment_query(query: str) -> bool:
+    """
+    Uses a small LLM call to determine if a query is related to recruiting/candidates.
+    This acts as a guardrail for off-topic questions.
+    """
+    prompt = (
+        "Respond ONLY with 'Yes' or 'No'. Does this query relate to candidates, "
+        "resumes, recruiting, jobs, or HR?\n"
+        f"Query: \"{query}\""
     )
-    
-    # The main trigger for the entire process.
-    process_button = st.button(
-        "🚀 Process Résumés",
-        type="primary",
-        use_container_width=True,
-        disabled=not (hr_name and files)
+    try:
+        resp = openai.chat.completions.create(
+            model="gpt-4o", # Using gpt-4o for this classification
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0 # Keep temperature low for clear Yes/No
+        )
+        return resp.choices[0].message.content.strip().lower().startswith("yes")
+    except Exception as e:
+        st.warning(f"Could not classify query relevance due to API error: {e}. Proceeding with RAG.")
+        return True # Default to True if classification fails, to allow RAG to try
+
+
+# --- 4. SIDEBAR UI (CHAT MANAGEMENT) ---
+with st.sidebar:
+    st.title("HireScope")
+    st.markdown("---")
+        
+    # --- New Chat Button ---
+    if st.button("➕ Start New Chat", use_container_width=True, help="Create a fresh chat session."):
+        chat_id = f"chat_{datetime.now().timestamp()}"
+        st.session_state.active_chat_id = chat_id
+        st.session_state.all_chats[chat_id] = {
+            "name": f"New Chat - {datetime.now():%Y-%m-%d %H:%M}",
+            "messages": []
+        }
+        st.toast("New chat created!", icon="✨")
+        st.rerun() # Rerun to switch to the new chat immediately
+
+    st.markdown("---")
+    st.subheader("📂 Your Chat Sessions")
+    st.markdown("Switch between your ongoing conversations.")
+
+    # Get current chat names for display in the radio button
+    chat_names = {cid: data["name"] for cid, data in st.session_state.all_chats.items()}
+    active_chat_id = st.session_state.active_chat_id
+        
+    # Streamlit radio button for chat selection
+    selected_chat_id = st.radio(
+        "Select a chat:",
+        options=list(chat_names.keys()), # Use chat IDs as options
+        format_func=lambda cid: chat_names[cid], # Display chat names
+        index=list(chat_names.keys()).index(active_chat_id), # Set default selection
+        key="chat_selector" # Unique key for the widget
     )
 
-if st.sidebar.button("Clear Session and Start Over"):
-    st.session_state.staged_files = []
-    st.session_state.final_results = []
-    st.session_state.errors = []
-    st.rerun()
+    # If a different chat is selected, update active_chat_id and rerun
+    if selected_chat_id != active_chat_id:
+        st.session_state.active_chat_id = selected_chat_id
+        st.rerun()
 
-# --- 5. LOGIC: PROCESSING PIPELINE ---
-if process_button:
-    if len(files) > 10:
-        st.error("⚠️ You can upload a maximum of 10 files at a time. Please reduce the count.")
-        st.stop()
-    
-    # Reset state for the new batch
-    st.session_state.staged_files = []
-    st.session_state.errors = []
-    
-    status_placeholder = st.empty()
-    progress_bar = st.progress(0, "Starting batch processing...")
-    
-    for i, pdf in enumerate(files):
-        try:
-            status_placeholder.info(f"⚙️ Processing: `{pdf.name}`...")
-            raw_text = extract_all_text(pdf.getvalue())
-            
-            if not raw_text or not raw_text.strip():
-                st.session_state.errors.append({"filename": pdf.name, "error": "No text could be extracted."})
-                continue
-            
-            # This is where you call your AI model
-            with st.spinner(f"🤖 AI is summarizing `{pdf.name}`..."):
-                summary = summarize_resume(raw_text) 
-            
-            name = extract_candidate_name(summary, pdf.name)
-            cid = make_candidate_id(name)
+    # --- Active Chat Management (Rename & Delete) ---
+    st.markdown("---")
+    st.subheader("⚙️ Manage Current Chat")
+    # Get the data for the currently active chat
+    active_chat_data = st.session_state.all_chats[active_chat_id]
 
-            # Stage the processed data instead of saving immediately
-            st.session_state.staged_files.append({
-                "name": name, "cid": cid, "summary": summary, "raw": raw_text,
-                "filename": pdf.name, "uploaded_by": hr_name
-            })
-            
-        except Exception as e:
-            st.session_state.errors.append({"filename": pdf.name, "error": str(e)})
-        
-        progress_bar.progress((i + 1) / len(files), f"Completed: `{pdf.name}`")
-        
-    status_placeholder.success("✅ Batch processing complete! Please review and save below.")
-    progress_bar.empty()
+    # Text input for renaming the active chat
+    new_name = st.text_input("📝 Rename Chat:", value=active_chat_data["name"], key="rename_chat_input")
+    if new_name != active_chat_data["name"] and new_name.strip(): # Check for actual change and non-empty name
+        # Ensure the new name isn't already taken by another chat
+        if new_name in chat_names.values() and new_name != active_chat_data["name"]:
+            st.warning("A chat with this name already exists. Please choose a different name.")
+        else:
+            active_chat_data["name"] = new_name
+            st.toast("Chat renamed successfully!", icon="✅")
+            # No rerun needed for just renaming, state updates automatically
 
-# --- 6. UI & LOGIC: DUPLICATE HANDLING AND SAVING ---
-if st.session_state.staged_files:
-    with st.container(border=True):
-        st.subheader("Step 2: Review & Save to Database")
-        
-        duplicates_to_resolve = []
-        processed_names = {f['name'] for f in st.session_state.staged_files}
-        
-        # Check for duplicates already in the database
-        existing_in_db = collection.get(where={"name": {"$in": list(processed_names)}})['ids']
+    # Delete confirmation logic for the active chat
+    delete_button_clicked = st.button("🗑️ Delete This Chat", use_container_width=True, help="Permanently delete the current chat session.")
 
-        for data in st.session_state.staged_files:
-            if data["name"] in existing_in_db:
-                duplicates_to_resolve.append(data)
-        
-        # Form to handle all duplicates at once
-        with st.form("save_to_db_form"):
-            if duplicates_to_resolve:
-                st.warning("⚠️ Some candidates already exist. Choose whether to overwrite them.")
-                overwrite_choices = {}
-                for dup in duplicates_to_resolve:
-                    label = f"Overwrite **{dup['name']}** (from `{dup['filename']}`)"
-                    overwrite_choices[dup['name']] = st.checkbox(label, value=True)
+    if delete_button_clicked:
+        # Prevent deleting the last remaining chat session
+        if len(st.session_state.all_chats) > 1:
+            # Implement a double-click confirmation for deletion
+            if "confirm_delete" not in st.session_state or not st.session_state.confirm_delete:
+                st.session_state.confirm_delete = True
+                st.warning("Are you sure you want to delete this chat? Click 'Delete This Chat' again to confirm.")
             else:
-                st.info("✅ All candidates appear to be new. Ready to save.")
-                overwrite_choices = {}
+                del st.session_state.all_chats[active_chat_id] # Delete the chat
+                del st.session_state.confirm_delete # Reset confirmation state
+                # Switch to the first available chat after deletion
+                st.session_state.active_chat_id = list(st.session_state.all_chats.keys())[0]
+                st.toast("Chat deleted successfully.", icon="🗑️")
+                st.rerun() # Rerun to update the UI with the new active chat
+        else:
+            st.error("Cannot delete the last remaining chat. Create a new one first if you wish to start over.")
+            # Reset confirmation if deletion was blocked
+            if "confirm_delete" in st.session_state:
+                del st.session_state.confirm_delete
+    else:
+        # If the delete button was not clicked, and a confirmation was pending, reset it
+        if "confirm_delete" in st.session_state and st.session_state.confirm_delete:
+            del st.session_state.confirm_delete
 
-            save_button = st.form_submit_button("💾 Save to Database", use_container_width=True, type="primary")
+    # Display the ChromaDB résumé count from utils.py for quick reference
+    # This assumes utils.py already has the st.sidebar.write for the count
+    # If not, you could add:
+    # try:
+    #     st.sidebar.markdown(f"📊 **Résumés in DB:** {collection.count()}")
+    # except Exception as e:
+    #     st.sidebar.error(f"Error getting DB count: {e}")
 
-        # Logic to execute after form submission
-        if save_button:
-            with st.spinner("Saving data..."):
-                saved_count = 0
-                st.session_state.final_results = [] # Clear previous results
+
+# --- 5. MAIN CHAT INTERFACE ---
+# Display the name of the currently active chat
+st.header(f"💬 {st.session_state.all_chats[active_chat_id]['name']}")
+st.markdown(f"**Assistant:** ScopeAI | **Knowledge Base:** {collection.count()} Résumés in ChromaDB")
+
+# Get the messages for the active chat session
+chat_messages = st.session_state.all_chats[active_chat_id]["messages"]
+
+# Use a fixed-height container for chat messages with a scrollbar,
+# mimicking a typical chat interface.
+chat_container = st.container(height=500, border=True)
+
+with chat_container:
+    # Display a welcome message if the current chat is empty
+    if not chat_messages:
+        st.info(
+            "Welcome to the HireScope chat space! "
+            "Ask me anything about the candidates in your database.\n\n"
+            "**For example:**\n"
+            "- 'Who has more than 5 years of experience with Python?'\n"
+            "- 'Compare the skills of John Doe and Jane Smith.'\n"
+            "- 'Find candidates who are project managers.'"
+        )
+    else:
+        # Iterate through messages and display them using st.chat_message
+        # Start from index 0 now, as the system prompt is handled separately in get_rag_response
+        for msg in chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                # If the message has associated sources (from AI response), display them in an expander
+                if "sources" in msg and msg["sources"]:
+                    with st.expander("📚 Sources"):
+                        for source in msg["sources"]:
+                            st.markdown(f"**Candidate:** {source.get('name', 'N/A')} (ID: `{source.get('candidate_id', 'N/A')}`)")
+                            # You could add more details from the source metadata here if needed
+                            # st.json(source) # For debugging/detailed view of source metadata
+
+# Handle user input at the bottom of the page
+user_query = st.chat_input("Ask about candidates, skills, experience...", key="chat_input")
+
+if user_query:
+    # Add the user's query to the current chat's messages
+    chat_messages.append({"role": "user", "content": user_query})
+    # Rerun to immediately display the user's message in the chat container
+    st.rerun() 
+
+# This block executes after a rerun, specifically when the last message is from the user
+if chat_messages and chat_messages[-1]["role"] == "user":
+    # Prepare chat history for the LLM call: filter out 'sources' and system prompt
+    # The system prompt is prepended in get_rag_response
+    # We pass all messages *except* the very last user query, as it's handled separately
+    # in the prompt_with_context
+    chat_history_for_llm = [
+        {"role": msg["role"], "content": msg["content"]}
+        for msg in chat_messages[:-1] # Exclude the current user query
+        if msg["role"] != "system" # Exclude any old system messages if they somehow got in
+    ]
+
+    # Get and display the assistant's response
+    with st.chat_message("assistant"):
+        with st.spinner("Searching résumés and thinking..."):
+            # Call the RAG engine to get the AI's reply and its sources
+            response, sources = get_rag_response(user_query, chat_history_for_llm)
+            st.markdown(response)
                 
-                for data in st.session_state.staged_files:
-                    name = data["name"]
-                    # If it's a duplicate and the user unchecked the box, skip it.
-                    if name in overwrite_choices and not overwrite_choices.get(name):
-                        st.toast(f"Skipped {name}", icon="🚫")
-                        continue
-                    
-                    # If it's a duplicate and we're overwriting, delete the old entry.
-                    if name in overwrite_choices and overwrite_choices.get(name):
-                        collection.delete(where={"name": name})
+            # Display sources if any were used
+            if sources:
+                with st.expander("📚 Sources"):
+                    for source in sources:
+                        st.markdown(f"**Candidate:** {source.get('name', 'N/A')} (ID: `{source.get('candidate_id', 'N/A')}`)")
+                        # st.json(source) # For debugging/detailed view
 
-                    # Add the new or updated entry to ChromaDB.
-                    collection.add(
-                        documents=[data["summary"]],
-                        metadatas=[{"candidate_id": data["cid"], "name": name, "uploaded_by": data["uploaded_by"]}],
-                        ids=[data["cid"]]
-                    )
-                    st.session_state.final_results.append(data)
-                    saved_count += 1
-                
-                # Persist changes to the database if the client supports it.
-                if hasattr(chroma_client, "persist"):
-                    chroma_client.persist()
+    # Add the assistant's response to the current chat's messages, including sources
+    chat_messages.append({"role": "assistant", "content": response, "sources": sources})
+    st.rerun() # Rerun to update the chat history with the assistant's response
 
-            st.success(f"🎉 Success! {saved_count} résumés have been saved to the database.")
-            st.session_state.staged_files = [] # Clear the stage
-            # A short delay before rerun can improve UX
-            import time; time.sleep(1)
-            st.rerun()
-
-# --- 7. UI: FINAL RESULTS DISPLAY ---
-if st.session_state.errors:
-    with st.container(border=True):
-        st.subheader("Processing Errors")
-        for err in st.session_state.errors:
-            st.error(f"**File:** `{err['filename']}` - **Error:** {err['error']}", icon="❌")
-
-if st.session_state.final_results:
-    with st.container(border=True):
-        st.subheader(f"Step 3: Review Successfully Processed Résumés ({len(st.session_state.final_results)})")
-        
-        for res in st.session_state.final_results:
-            with st.expander(f"👤 **{res['name']}** (from file: `{res['filename']}`)", expanded=False):
-                tab1, tab2 = st.tabs(["🤖 AI Summary", "📄 Raw Text"])
-                with tab1:
-                    st.markdown(res['summary'])
-                with tab2:
-                    st.text_area("Extracted Text", res['raw'], height=300, key=f"raw_{res['cid']}")
+st.markdown("---")
+st.info("Remember to upload résumés on the 'Upload Résumés' page to populate the knowledge base!")
