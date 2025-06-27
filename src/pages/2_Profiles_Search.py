@@ -9,70 +9,99 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for nice cards
+# Custom CSS for Card and Buttons
 st.markdown("""
     <style>
-    .card-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 32px;
-        justify-content: flex-start;
-    }
     .candidate-card {
-        background: #181c25;
+        background: #23272f;
         color: #f0f6fc;
-        box-shadow: 0 4px 32px #0002;
         border-radius: 18px;
-        padding: 1.8rem 1.5rem 1.5rem 1.5rem;
+        box-shadow: 0 2px 12px #0003;
+        padding: 1.5rem 1.5rem 1.1rem 1.5rem;
+        margin-bottom: 32px;
         min-width: 320px;
-        max-width: 400px;
-        flex: 1 1 340px;
-        transition: box-shadow 0.2s, transform 0.2s;
-        position: relative;
-        border: 1px solid #23272f;
+        max-width: 420px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
     }
-    .candidate-card:hover {
-        box-shadow: 0 6px 40px #0004;
-        transform: translateY(-2px) scale(1.03);
-        border-color: #4b7bec;
+    .candidate-header {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 0.4rem;
     }
     .candidate-avatar {
         width: 56px;
         height: 56px;
         border-radius: 50%;
-        background: #23272f;
+        background: #363b45;
         color: #7ed6df;
         font-size: 2rem;
         font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 14px;
-        margin-right: 12px;
-        float: left;
+        flex-shrink: 0;
+        margin-top: 2px;
     }
-    .candidate-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
+    .candidate-info {
+        flex: 1;
     }
-    .candidate-actions {
-        margin-top: 1.2rem;
-        display: flex;
-        gap: 8px;
-    }
-    .candidate-contact {
-        margin: 0.2rem 0 0.2rem 0;
-        font-size: 1rem;
+    .candidate-title {
+        font-weight: 700;
+        font-size: 1.12rem;
+        margin-bottom: 2px;
     }
     .candidate-meta {
-        font-size: 0.98rem;
-        color: #7f8fa6;
+        font-size: 0.95rem;
+        color: #999fae;
+        margin-bottom: 2px;
     }
-    .delete-expander > div {
-        background: #23272f !important;
-        border-radius: 9px !important;
-        border: 1px solid #4b7bec !important;
+    .candidate-contact {
+        font-size: 1rem;
+        margin-top: 0.2rem;
+        margin-bottom: 0.2rem;
+    }
+    .candidate-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 1rem;
+    }
+    .scroller-box {
+        max-height: 300px;
+        overflow-y: auto;
+        background: #23272f;
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .stButton button, .stButton > button {
+        border-radius: 8px !important;
+        border: none !important;
+        padding: 8px 20px !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        background: #3346d3 !important;
+        color: #fff !important;
+        transition: background 0.18s;
+        margin-right: 2px;
+    }
+    .stButton button:hover, .stButton > button:hover {
+        background: #23336c !important;
+        color: #fff !important;
+    }
+    .stButton.delete-btn button {
+        background: #e84118 !important;
+    }
+    .stButton.delete-btn button:hover {
+        background: #c23616 !important;
+    }
+    .stExpander {
+        border-radius: 10px !important;
+        border: 1px solid #444 !important;
+        background: #181c25 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -110,14 +139,14 @@ def matches(meta, doc):
 st.markdown("---")
 st.subheader("Candidate List")
 
-# Render cards in a custom HTML grid for best effect
-st.markdown('<div class="card-grid">', unsafe_allow_html=True)
+# Grid layout for cards
+cols = st.columns(2)
 
 for idx, (meta, doc) in enumerate(zip(metas, docs)):
     if not matches(meta, doc):
         continue
 
-    # Prepare card info
+    # Prepare info
     name = meta.get('name', 'Unknown')
     uploaded_by = meta.get('uploaded_by', 'N/A')
     upload_date = meta.get('upload_timestamp', 'N/A')
@@ -132,61 +161,71 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
         email = summary_json.get("email")
         phone = summary_json.get("phone")
         linkedin = summary_json.get("linkedin")
-    except:
-        pass
+    except Exception:
+        summary_json = None
 
-    # Render card as HTML for style
-    card_html = f"""
-    <div class="candidate-card">
-        <div class="candidate-header">
-            <div class="candidate-avatar">{initials}</div>
-            <div>
-                <div style="font-size:1.22rem;font-weight:700;margin-bottom:2px;">{name}</div>
-                <div class="candidate-meta">ID: <b>{candidate_id}</b></div>
-                <div class="candidate-meta">Uploaded by <b>{uploaded_by}</b> · <span>{upload_date}</span></div>
-            </div>
-        </div>
-        <div class="candidate-contact">
-            {'📧 <a href="mailto:{}">{}</a>'.format(email, email) if email else ''}
-            {'<br>📞 <span style="color:#e1b12c;">{}</span>'.format(phone) if phone else ''}
-            {'<br>🔗 <a href="{}" target="_blank" style="color:#0097e6;">LinkedIn</a>'.format(linkedin) if linkedin else ''}
-        </div>
-        <div class="candidate-actions">
-            <form action="" method="post">
-                <button class="stButton" name="view_{idx}" style="background:#4b7bec;color:white;border:none;padding:7px 18px;border-radius:7px;cursor:pointer;" type="submit">📄 View Summary</button>
-                <button class="stButton" name="delete_{idx}" style="background:#e84118;color:white;border:none;padding:7px 18px;border-radius:7px;cursor:pointer;" type="submit">🗑️ Delete</button>
-            </form>
-        </div>
-    </div>
-    """
-    st.markdown(card_html, unsafe_allow_html=True)
+    # Render card in Streamlit-native way
+    col = cols[idx % 2]
+    with col:
+        with st.container():
+            st.markdown('<div class="candidate-card">', unsafe_allow_html=True)
+            # Header
+            st.markdown(
+                f"""
+                <div class="candidate-header">
+                    <span class="candidate-avatar">{initials}</span>
+                    <div class="candidate-info">
+                        <div class="candidate-title">{name}</div>
+                        <div class="candidate-meta">ID: {candidate_id}</div>
+                        <div class="candidate-meta">Uploaded by <b>{uploaded_by}</b> · {upload_date}</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            # Contact
+            st.markdown('<div class="candidate-contact">', unsafe_allow_html=True)
+            if email:
+                st.markdown(f'📧 <a href="mailto:{email}">{email}</a>', unsafe_allow_html=True)
+            if phone:
+                st.markdown(f' <br>📞 <span style="color:#e1b12c;">{phone}</span>', unsafe_allow_html=True)
+            if linkedin:
+                st.markdown(f' <br>🔗 <a href="{linkedin}" target="_blank" style="color:#0097e6;">LinkedIn</a>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    # Streamlit controls for each card (separate from HTML, for actual logic)
-    # Use unique keys to keep buttons independent
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("📄 View Summary", key=f"view_{idx}"):
-            with st.expander(f"Summary for {name}", expanded=True):
-                st.markdown(
-                    "<div style='max-height: 400px; overflow-y: auto; padding: 1rem; background-color: #181c25; border: 1px solid #4b7bec; border-radius: 9px;'>",
-                    unsafe_allow_html=True)
-                if summary_json:
-                    st.json(summary_json)
-                else:
-                    st.text_area("Summary", doc, height=300, disabled=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-    with col2:
-        if st.button("🗑️ Delete", key=f"delete_{idx}"):
-            with st.expander(f"Confirm delete {name}?", expanded=True, class_="delete-expander"):
-                confirm, cancel = st.columns([1, 1])
-                with confirm:
-                    if st.button("✅ Confirm", key=f"confirm_{idx}"):
-                        collection.delete(ids=[meta['candidate_id']])
-                        if hasattr(chroma_client, "persist"):
-                            chroma_client.persist()
-                        st.success(f"Deleted {name}.")
-                        st.rerun()
-                with cancel:
-                    st.button("❌ Cancel", key=f"cancel_{idx}")
+            # Actions
+            st.markdown('<div class="candidate-actions">', unsafe_allow_html=True)
 
-st.markdown('</div>', unsafe_allow_html=True)
+            # Use columns for buttons inside the card
+            bcol1, bcol2 = st.columns([1,1])
+            with bcol1:
+                view_summary = st.button("📄 View Summary", key=f"view_{idx}")
+            with bcol2:
+                delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}", type="primary", help="Delete this candidate", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # Summary modal (fixed height, scrollable)
+            if view_summary:
+                with st.expander(f"Summary for {name}", expanded=True):
+                    st.markdown('<div class="scroller-box">', unsafe_allow_html=True)
+                    if summary_json:
+                        st.json(summary_json)
+                    else:
+                        st.text_area("Summary", doc, height=250, disabled=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+            # Delete confirmation, modal style
+            if delete_candidate:
+                with st.expander(f"Confirm delete {name}?", expanded=True):
+                    c1, c2 = st.columns([1, 1])
+                    with c1:
+                        if st.button("✅ Confirm", key=f"confirm_{idx}"):
+                            collection.delete(ids=[meta['candidate_id']])
+                            if hasattr(chroma_client, "persist"):
+                                chroma_client.persist()
+                            st.success(f"Deleted {name}.")
+                            st.rerun()
+                    with c2:
+                        st.button("❌ Cancel", key=f"cancel_{idx}")
+
+            st.markdown('</div>', unsafe_allow_html=True)
