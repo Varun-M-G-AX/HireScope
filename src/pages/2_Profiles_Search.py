@@ -71,8 +71,8 @@ with card_container:
         st.info("Try adjusting your search criteria or upload new résumés.")
     else:
         # Arrange cards in columns for a grid-like layout
-        # Adjust the number of columns based on screen size or preference
-        num_cols = 3 # You can make this responsive with st.columns([1,1,1]) etc.
+        # Changed num_cols from 3 to 2 to make cards wider
+        num_cols = 2 
         cols = st.columns(num_cols)
         
         for idx, (meta, doc, original_index) in enumerate(filtered_candidates):
