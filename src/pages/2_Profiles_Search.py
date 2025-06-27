@@ -1,9 +1,10 @@
 import streamlit as st
+import json # Import json module for parsing summary
 from utils import collection, chroma_client # Ensure these are correctly imported from your utils.py
 
 st.set_page_config(
     page_title="HireScope - Candidate Profiles",
-    page_icon="📇",
+    page_icon="💼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -76,7 +77,8 @@ with card_container:
         
         for idx, (meta, doc, original_index) in enumerate(filtered_candidates):
             with cols[idx % num_cols]: # Distribute cards evenly across columns
-                with st.card(): # Use st.card for a nice visual container
+                # Replaced st.card() with st.container(border=True) for compatibility
+                with st.container(border=True): # Use st.container(border=True) for a nice visual container
                     st.markdown(f"### 👤 {meta.get('name', 'Unknown')}")
                     st.caption(f"ID: `{meta['candidate_id']}`")
                     st.caption(f"Uploaded by: {meta.get('uploaded_by', 'N/A')}")
@@ -87,10 +89,12 @@ with card_container:
                     view_expander_key = f"view_expander_{original_index}"
                     
                     # Check if the expander should be open (e.g., if it was open on previous rerun)
+                    # Note: st.button click will trigger a rerun, and then the expander state will be read.
                     if st.button("👁️ View Summary", key=f"view_btn_{original_index}", use_container_width=True):
-                        # Toggle the expander state
+                        # Toggle the expander state in session_state
                         st.session_state[view_expander_key] = not st.session_state.get(view_expander_key, False)
-                        # No rerun needed here, expander state is handled by Streamlit
+                        # Rerun is needed here to immediately reflect the expander state change
+                        st.rerun()
 
                     # The expander itself
                     if st.session_state.get(view_expander_key, False):
