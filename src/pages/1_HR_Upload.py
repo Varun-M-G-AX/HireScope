@@ -388,18 +388,21 @@ if files:
             
             with col1:
                 st.markdown("#### 📄 Raw Extracted Text")
+                raw_display = raw[:2000].replace('\n', '<br>').replace(' ', '&nbsp;')
+                truncated_msg = '<br><i>... (truncated)</i>' if len(raw) > 2000 else ''
                 st.markdown(f"""
                 <div class="text-display">
-                    {raw[:2000].replace('\n', '<br>').replace(' ', '&nbsp;')}
-                    {'<br><i>... (truncated)</i>' if len(raw) > 2000 else ''}
+                    {raw_display}
+                    {truncated_msg}
                 </div>
                 """, unsafe_allow_html=True)
             
             with col2:
                 st.markdown("#### 📋 Structured Summary")
+                summary_display = summary.replace('\n', '<br>').replace(' ', '&nbsp;')
                 st.markdown(f"""
                 <div class="text-display">
-                    {summary.replace('\n', '<br>').replace(' ', '&nbsp;')}
+                    {summary_display}
                 </div>
                 """, unsafe_allow_html=True)
             
