@@ -18,9 +18,9 @@ st.markdown("""
         border-radius: 18px;
         box-shadow: 0 2px 12px #0003;
         padding: 1.5rem;
-        margin-bottom: 32px;
+        margin-bottom: 30px;
         min-width: 320px;
-        max-width: 430px;
+        max-width: 470px;
         display: flex;
         flex-direction: column;
         gap: 0.7rem;
@@ -161,7 +161,6 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
     with col:
         with st.container(border=False):
             st.markdown('<div class="candidate-card">', unsafe_allow_html=True)
-            # Header
             st.markdown(
                 f"""
                 <div class="candidate-header">
@@ -174,7 +173,6 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
                 </div>
                 """, unsafe_allow_html=True,
             )
-            # Contact
             st.markdown('<div class="candidate-contact">', unsafe_allow_html=True)
             if email:
                 st.markdown(f'📧 <a href="mailto:{email}">{email}</a>', unsafe_allow_html=True)
@@ -185,33 +183,32 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
             st.markdown('</div>', unsafe_allow_html=True)
 
             # Actions and summary - all INSIDE the card
-            with st.container():
-                with st.columns([1, 1]) as (bcol1, bcol2):
-                    with bcol1:
-                        view_summary = st.button("📄 View Summary", key=f"view_{idx}")
-                    with bcol2:
-                        delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}")
+            bcol1, bcol2 = st.columns([1, 1])
+            with bcol1:
+                view_summary = st.button("📄 View Summary", key=f"view_{idx}")
+            with bcol2:
+                delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}")
 
-                if view_summary:
-                    with st.expander(f"Summary for {name}", expanded=True):
-                        st.markdown('<div class="summary-scroll">', unsafe_allow_html=True)
-                        if summary_json:
-                            st.json(summary_json)
-                        else:
-                            st.text_area("Summary", doc, height=220, disabled=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+            if view_summary:
+                with st.expander(f"Summary for {name}", expanded=True):
+                    st.markdown('<div class="summary-scroll">', unsafe_allow_html=True)
+                    if summary_json:
+                        st.json(summary_json)
+                    else:
+                        st.text_area("Summary", doc, height=220, disabled=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-                if delete_candidate:
-                    with st.expander(f"Confirm delete {name}?", expanded=True):
-                        c1, c2 = st.columns([1, 1])
-                        with c1:
-                            if st.button("✅ Confirm", key=f"confirm_{idx}"):
-                                collection.delete(ids=[meta['candidate_id']])
-                                if hasattr(chroma_client, "persist"):
-                                    chroma_client.persist()
-                                st.success(f"Deleted {name}.")
-                                st.rerun()
-                        with c2:
-                            st.button("❌ Cancel", key=f"cancel_{idx}")
+            if delete_candidate:
+                with st.expander(f"Confirm delete {name}?", expanded=True):
+                    c1, c2 = st.columns([1, 1])
+                    with c1:
+                        if st.button("✅ Confirm", key=f"confirm_{idx}"):
+                            collection.delete(ids=[meta['candidate_id']])
+                            if hasattr(chroma_client, "persist"):
+                                chroma_client.persist()
+                            st.success(f"Deleted {name}.")
+                            st.rerun()
+                    with c2:
+                        st.button("❌ Cancel", key=f"cancel_{idx}")
 
             st.markdown('</div>', unsafe_allow_html=True)
