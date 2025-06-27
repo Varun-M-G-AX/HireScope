@@ -1,248 +1,258 @@
-# utils.py must define summarize_resume and make_candidate_id properly for this to work.
-
-import io, re, json, streamlit as st, fitz, pdfplumber, PyPDF2
+import io
+import re
+import streamlit as st
+import fitz  # PyMuPDF
+import pdfplumber
+import PyPDF2
 from pdfminer.high_level import extract_text
 from pdf2image import convert_from_bytes
 import pytesseract
+
+# Assume these are defined in your utils.py
 from utils import summarize_resume, make_candidate_id, chroma_client, collection
 
-# --- PAGE CONFIGURATION ---
+# --- 1. PAGE CONFIGURATION & THEME ---
+# Sets up the page with a title, icon, wide layout, and a custom theme.
+# The theme is designed to work well in both light and dark modes with a blue accent.
 st.set_page_config(
-    page_title="HireScope AI - Resume Processor",
-    page_icon="💼",
+    page_title="HireFlow - Résumé Uploader",
+    page_icon="📂",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'About': "HireFlow: AI-Powered Résumé Processor"
+    }
 )
 
-# --- SESSION STATE INITIALIZATION ---
-# Track stats, results, and staged files in session
-if "results" not in st.session_state:
-    st.session_state.results = []
-if "stats" not in st.session_state:
-    st.session_state.stats = {"processed": 0, "errors": 0}
-if "processed_files_data" not in st.session_state:
-    st.session_state.processed_files_data = []
-
-
-# --- HEADER ---
-st.title("💼 HireScope AI")
-st.caption("A Smart AI-Powered Résumé Management & Analysis Tool")
-
-
-# --- CORE FUNCTIONS (Unchanged, but vital for context) ---
-
-def extract_all_text(pdf_bytes):
-    """Chain-tries multiple PDF text extractors for robustness, includes OCR fallback."""
-    extractors = [
-        lambda: "\n".join(p.get_text() for p in fitz.open(stream=pdf_bytes, filetype="pdf")),
-        lambda: extract_text(io.BytesIO(pdf_bytes)),
-        lambda: "\n".join(p.extract_text() or "" for p in pdfplumber.open(io.BytesIO(pdf_bytes)).pages),
-        lambda: "".join(p.extract_text() or "" for p in PyPDF2.PdfReader(io.BytesIO(pdf_bytes)).pages),
-        lambda: "\n".join(pytesseract.image_to_string(img, config='--psm 6') for img in convert_from_bytes(pdf_bytes, dpi=300))
-    ]
-    for ext in extractors:
-        try:
-            out = ext()
-            # Return if we got a meaningful amount of text
-            if out and len(out.strip()) > 100:
-                return out
-        except Exception:
-            continue
-    return ""
-
-def extract_candidate_name(summary: str, fallback_filename: str) -> str:
-    """Extracts candidate name from summary JSON, then tries regex, and falls back to filename."""
+# --- 2. CORE FUNCTIONS ---
+# Robust text extraction pipeline trying multiple methods for reliability.
+def extract_all_text(pdf_bytes: bytes) -> str:
+    """Chain-tries multiple PDF text extractors, including an OCR fallback."""
+    text = ""
+    # Method 1: PyMuPDF (fitz) - Often the most reliable
     try:
-        data = json.loads(summary)
-        if isinstance(data, dict) and data.get("name"):
-            return data["name"].strip()
-    except (json.JSONDecodeError, AttributeError):
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            text = "\n".join(p.get_text() for p in doc)
+    except Exception:
         pass
+    if text.strip(): return text
 
-    # Regex patterns to find name
-    patterns = [r"(?i)^name[:\-]?\s*(.+)$", r"(?i)^full name[:\-]?\s*(.+)$"]
-    for p in patterns:
-        match = re.search(p, summary, re.M)
-        if match: return match.group(1).strip()
+    # Method 2: pdfminer.six
+    try:
+        text = extract_text(io.BytesIO(pdf_bytes))
+    except Exception:
+        pass
+    if text.strip(): return text
+
+    # Method 3: pdfplumber
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            text = "\n".join(p.extract_text() or "" for p in pdf.pages)
+    except Exception:
+        pass
+    if text.strip(): return text
+
+    # Method 4: PyPDF2
+    try:
+        reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
+        text = "".join(p.extract_text() or "" for p in reader.pages)
+    except Exception:
+        pass
+    if text.strip(): return text
+
+    # Method 5: OCR Fallback (Tesseract) for image-based PDFs
+    try:
+        images = convert_from_bytes(pdf_bytes, dpi=300)
+        text = "\n".join(pytesseract.image_to_string(img) for img in images)
+    except Exception:
+        pass
+    return text
+
+# Improved name extraction with more robust patterns.
+def extract_candidate_name(summary: str, fallback_filename: str) -> str:
+    """Extracts candidate name from summary, with fallback to filename."""
+    # Regex patterns looking for "Name: John Doe" type formats.
+    patterns = [
+        r"(?i)^name[:\-]?\s*(.+)$",
+        r"(?i)^candidate(?: name)?[:\-]?\s*(.+)$",
+        r"(?i)^full name[:\-]?\s*(.+)$",
+    ]
+    for pat in patterns:
+        m = re.search(pat, summary, re.M)
+        if m: return m.group(1).strip()
     
-    # Heuristic: Find a capitalized name-like pattern in the first few lines
-    for line in summary.split("\n")[:5]:
-        line = line.strip("- ")
-        if re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+", line):
-            return line
+    # Heuristic: Find a capitalized name-like string in the first few lines.
+    for line in summary.splitlines()[:5]:
+        line = line.strip("-• \t")
+        # Matches "John Doe", "J. Doe", "John Fitzgerald Doe"
+        if re.fullmatch(r"[A-Z][a-zA-Z.'-]{1,}(?:\s[A-Z][a-zA-Z.'-]{1,})+", line):
+            return line.strip()
+            
+    # Fallback: Clean up the PDF filename.
+    clean_name = re.sub(r"[_-]", " ", fallback_filename).rsplit(".", 1)[0]
+    return clean_name.title()
 
-    # Fallback to a cleaned-up filename
-    return fallback_filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").title()
+
+# --- 3. SESSION STATE INITIALIZATION ---
+# Using session state to hold data across reruns.
+if "staged_files" not in st.session_state:
+    st.session_state.staged_files = []
+if "final_results" not in st.session_state:
+    st.session_state.final_results = []
+if "errors" not in st.session_state:
+    st.session_state.errors = []
 
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.subheader("📊 Session Stats")
-    st.metric("✅ Résumés Processed", st.session_state.stats["processed"])
-    st.metric("❌ Errors Encountered", st.session_state.stats["errors"])
-    
-    st.divider()
-    
-    if st.button("Clear Session & Reset Stats", use_container_width=True):
-        st.session_state.stats = {"processed": 0, "errors": 0}
-        st.session_state.results.clear()
-        st.session_state.processed_files_data.clear()
-        st.rerun()
+# --- 4. UI: HEADER AND INPUT FORM ---
+st.title("HireFlow Résumé Processor")
+st.markdown("Upload candidate résumés to automatically extract, summarize, and store their information.")
 
-# --- MAIN PAGE LAYOUT ---
-
-# --- STEP 1: UPLOAD & PROCESS ---
 with st.container(border=True):
-    st.subheader("Step 1: Upload Résumés")
-    col1, col2 = st.columns([2, 3])
-    with col1:
-        hr_name = st.text_input("Your Name (HR Representative)", placeholder="e.g., Jane Doe")
-    with col2:
-        files = st.file_uploader(
-            "Upload up to 15 Résumé PDFs at a time",
-            type="pdf",
-            accept_multiple_files=True,
-            help="You can drag and drop multiple PDF files here."
-        )
+    st.subheader("Step 1: Upload Your Files")
+    hr_name = st.text_input("👤 Your Name (HR Representative)", placeholder="e.g., Maria Garcia")
+    files = st.file_uploader(
+        "📂 Upload up to 10 résumé PDFs",
+        type="pdf",
+        accept_multiple_files=True
+    )
+    
+    # The main trigger for the entire process.
+    process_button = st.button(
+        "🚀 Process Résumés",
+        type="primary",
+        use_container_width=True,
+        disabled=not (hr_name and files)
+    )
 
-    process_button = st.button("Process Résumés", type="primary", use_container_width=True, disabled=not (hr_name and files))
+if st.sidebar.button("Clear Session and Start Over"):
+    st.session_state.staged_files = []
+    st.session_state.final_results = []
+    st.session_state.errors = []
+    st.rerun()
 
+# --- 5. LOGIC: PROCESSING PIPELINE ---
 if process_button:
-    if len(files) > 15:
-        st.error("❌ You can upload a maximum of 15 files at a time. Please reduce the number of files.")
+    if len(files) > 10:
+        st.error("⚠️ You can upload a maximum of 10 files at a time. Please reduce the count.")
         st.stop()
     
-    st.session_state.processed_files_data = []
-    st.session_state.stats["errors"] = 0 # Reset errors for this batch
+    # Reset state for the new batch
+    st.session_state.staged_files = []
+    st.session_state.errors = []
     
-    st.subheader("🔄 Processing Files...")
-    progress_bar = st.progress(0, "Initializing...")
+    status_placeholder = st.empty()
+    progress_bar = st.progress(0, "Starting batch processing...")
     
     for i, pdf in enumerate(files):
         try:
-            progress_bar.progress((i) / len(files), f"Reading {pdf.name}...")
+            status_placeholder.info(f"⚙️ Processing: `{pdf.name}`...")
             raw_text = extract_all_text(pdf.getvalue())
-            if not raw_text.strip():
-                raise ValueError("No text could be extracted from this PDF.")
             
-            progress_bar.progress((i + 0.5) / len(files), f"Summarizing {pdf.name} with AI...")
-            with st.spinner(f"🤖 AI is summarizing {pdf.name}..."):
-                summary = summarize_resume(raw_text) # Assumes this is a call to a powerful LLM
+            if not raw_text or not raw_text.strip():
+                st.session_state.errors.append({"filename": pdf.name, "error": "No text could be extracted."})
+                continue
             
-            candidate_name = extract_candidate_name(summary, pdf.name)
-            candidate_id = make_candidate_id(candidate_name)
+            # This is where you call your AI model
+            with st.spinner(f"🤖 AI is summarizing `{pdf.name}`..."):
+                summary = summarize_resume(raw_text) 
+            
+            name = extract_candidate_name(summary, pdf.name)
+            cid = make_candidate_id(name)
 
-            # Stage the data instead of writing directly
-            st.session_state.processed_files_data.append({
-                "name": candidate_name,
-                "cid": candidate_id,
-                "summary": summary,
-                "raw": raw_text,
-                "filename": pdf.name,
-                "uploaded_by": hr_name
+            # Stage the processed data instead of saving immediately
+            st.session_state.staged_files.append({
+                "name": name, "cid": cid, "summary": summary, "raw": raw_text,
+                "filename": pdf.name, "uploaded_by": hr_name
             })
             
         except Exception as e:
-            st.session_state.stats["errors"] += 1
-            st.warning(f"⚠️ Could not process {pdf.name}. Reason: {e}")
-    
-    progress_bar.progress(1.0, "Processing complete! Ready for next step.")
+            st.session_state.errors.append({"filename": pdf.name, "error": str(e)})
+        
+        progress_bar.progress((i + 1) / len(files), f"Completed: `{pdf.name}`")
+        
+    status_placeholder.success("✅ Batch processing complete! Please review and save below.")
+    progress_bar.empty()
 
-# --- STEP 2: HANDLE DUPLICATES & SAVE ---
-if st.session_state.processed_files_data:
+# --- 6. UI & LOGIC: DUPLICATE HANDLING AND SAVING ---
+if st.session_state.staged_files:
     with st.container(border=True):
         st.subheader("Step 2: Review & Save to Database")
         
-        # Identify duplicates (in DB or in the current upload batch)
         duplicates_to_resolve = []
-        processed_names = set()
+        processed_names = {f['name'] for f in st.session_state.staged_files}
+        
+        # Check for duplicates already in the database
+        existing_in_db = collection.get(where={"name": {"$in": list(processed_names)}})['ids']
 
-        for data in st.session_state.processed_files_data:
-            is_db_dup = collection.get(where={"name": data["name"]})["ids"]
-            is_batch_dup = data["name"] in processed_names
-            if is_db_dup or is_batch_dup:
-                duplicates_to_resolve.append({
-                    "data": data,
-                    "reason": "Already in database" if is_db_dup else "Duplicate in this upload"
-                })
-            processed_names.add(data["name"])
-
-        # Form to resolve duplicates if any exist
-        if duplicates_to_resolve:
-            st.info(f"Found {len(duplicates_to_resolve)} potential duplicate(s). Please review and confirm.")
-            with st.form("duplicate_resolution_form"):
+        for data in st.session_state.staged_files:
+            if data["name"] in existing_in_db:
+                duplicates_to_resolve.append(data)
+        
+        # Form to handle all duplicates at once
+        with st.form("save_to_db_form"):
+            if duplicates_to_resolve:
+                st.warning("⚠️ Some candidates already exist. Choose whether to overwrite them.")
                 overwrite_choices = {}
                 for dup in duplicates_to_resolve:
-                    name = dup["data"]["name"]
-                    reason = dup["reason"]
-                    label = f"Overwrite **{name}**? (Reason: {reason})"
-                    overwrite_choices[name] = st.checkbox(label, value=True, key=f"ow_{dup['data']['cid']}")
-                
-                submitted = st.form_submit_button("Confirm Overwrites and Save All Résumés", use_container_width=True)
-        else:
-            # If no duplicates, provide a simple save button
-            with st.form("save_form"):
-                 st.success("✅ All résumés are new. Ready to save to the database.")
-                 submitted = st.form_submit_button("Save All to Database", use_container_width=True, type="primary")
-                 overwrite_choices = {} # No overwrites needed
+                    label = f"Overwrite **{dup['name']}** (from `{dup['filename']}`)"
+                    overwrite_choices[dup['name']] = st.checkbox(label, value=True)
+            else:
+                st.info("✅ All candidates appear to be new. Ready to save.")
+                overwrite_choices = {}
 
-        # Processing logic after form submission
-        if submitted:
-            with st.spinner("💾 Saving to database... Please wait."):
-                final_results = []
-                # Clear previous results to show only the current batch
-                st.session_state.results.clear()
+            save_button = st.form_submit_button("💾 Save to Database", use_container_width=True, type="primary")
+
+        # Logic to execute after form submission
+        if save_button:
+            with st.spinner("Saving data..."):
+                saved_count = 0
+                st.session_state.final_results = [] # Clear previous results
                 
-                for data in st.session_state.processed_files_data:
+                for data in st.session_state.staged_files:
                     name = data["name"]
-                    cid = data["cid"]
-
-                    # Skip if it's a duplicate and user chose not to overwrite
-                    if name in overwrite_choices and not overwrite_choices[name]:
-                        st.warning(f"Skipped duplicate: {name}")
+                    # If it's a duplicate and the user unchecked the box, skip it.
+                    if name in overwrite_choices and not overwrite_choices.get(name):
+                        st.toast(f"Skipped {name}", icon="🚫")
                         continue
                     
-                    # If it's a duplicate and user wants to overwrite, delete old entry first
-                    if name in overwrite_choices and overwrite_choices[name]:
-                         collection.delete(where={"name": name})
+                    # If it's a duplicate and we're overwriting, delete the old entry.
+                    if name in overwrite_choices and overwrite_choices.get(name):
+                        collection.delete(where={"name": name})
 
-                    # Add to ChromaDB
+                    # Add the new or updated entry to ChromaDB.
                     collection.add(
                         documents=[data["summary"]],
-                        metadatas=[{"candidate_id": cid, "name": name, "uploaded_by": data["uploaded_by"]}],
-                        ids=[cid]
+                        metadatas=[{"candidate_id": data["cid"], "name": name, "uploaded_by": data["uploaded_by"]}],
+                        ids=[data["cid"]]
                     )
-                    
-                    st.session_state.stats["processed"] += 1
-                    result_entry = {
-                        "name": name,
-                        "cid": cid,
-                        "summary": data['summary'][:1200], # Truncate for display
-                        "raw": data['raw'][:1200],       # Truncate for display
-                        "filename": data['filename']
-                    }
-                    st.session_state.results.append(result_entry)
-                    final_results.append(result_entry)
-
+                    st.session_state.final_results.append(data)
+                    saved_count += 1
+                
+                # Persist changes to the database if the client supports it.
                 if hasattr(chroma_client, "persist"):
                     chroma_client.persist()
 
-                st.success(f"🎉 Successfully processed and saved {len(final_results)} résumés!")
-                # Clear the staged data after processing
-                st.session_state.processed_files_data = []
-                st.rerun() # Rerun to reflect stat changes and show results cleanly
+            st.success(f"🎉 Success! {saved_count} résumés have been saved to the database.")
+            st.session_state.staged_files = [] # Clear the stage
+            # A short delay before rerun can improve UX
+            import time; time.sleep(1)
+            st.rerun()
 
-
-# --- STEP 3: REVIEW RESULTS ---
-if st.session_state.results:
+# --- 7. UI: FINAL RESULTS DISPLAY ---
+if st.session_state.errors:
     with st.container(border=True):
-        st.subheader(f"Step 3: Review Latest Batch Results ({len(st.session_state.results)} candidates)")
-        for res in st.session_state.results:
-            with st.expander(f"👤 **{res['name']}** — (from `{res['filename']}`)", expanded=False):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.subheader("📄 AI Summary")
-                    st.text_area("Summary", res['summary'], height=300, key=f"summary_{res['cid']}")
-                with col2:
-                    st.subheader("📝 Raw Extracted Text")
-                    st.text_area("Raw Text", res['raw'], height=300, key=f"raw_{res['cid']}")
+        st.subheader("Processing Errors")
+        for err in st.session_state.errors:
+            st.error(f"**File:** `{err['filename']}` - **Error:** {err['error']}", icon="❌")
+
+if st.session_state.final_results:
+    with st.container(border=True):
+        st.subheader(f"Step 3: Review Successfully Processed Résumés ({len(st.session_state.final_results)})")
+        
+        for res in st.session_state.final_results:
+            with st.expander(f"👤 **{res['name']}** (from file: `{res['filename']}`)", expanded=False):
+                tab1, tab2 = st.tabs(["🤖 AI Summary", "📄 Raw Text"])
+                with tab1:
+                    st.markdown(res['summary'])
+                with tab2:
+                    st.text_area("Extracted Text", res['raw'], height=300, key=f"raw_{res['cid']}")
