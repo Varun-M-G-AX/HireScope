@@ -3,53 +3,51 @@ import streamlit as st
 from datetime import datetime
 from utils import collection, openai
 
-st.set_page_config(page_title="💬 HireScope Chat", page_icon="💼", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="💬 HireScope Chat",
+    page_icon="💼",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# -------------------
-# Session Initialization & State
-# -------------------
+# --- Chat Context Prompt ---
+SYSTEM_PROMPT = {
+    "role": "system",
+    "content": (
+        "You are a recruiting assistant. "
+        "Answer ONLY from résumé snippets provided in context. "
+        "If the query is unrelated to candidates or résumés, say: "
+        "'Sorry, I can only answer questions about candidates based on the résumé snippets provided.'"
+    )
+}
+
+# --- Session Initialization ---
 if "all_chats" not in st.session_state:
     st.session_state.all_chats = {}
 if "active_chat" not in st.session_state:
-    default_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
-    st.session_state.active_chat = default_name
-    st.session_state.all_chats[default_name] = [{
-        "role": "system",
-        "content": (
-            "You are a recruiting assistant. "
-            "Answer ONLY from résumé snippets provided in context. "
-            "If the query is unrelated to candidates or résumés, say: "
-            "'Sorry, I can only answer questions about candidates based on the résumé snippets provided.'"
-        )
-    }]
+    new_title = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
+    st.session_state.active_chat = new_title
+    st.session_state.all_chats[new_title] = [SYSTEM_PROMPT]
 if "chat_titles" not in st.session_state:
     st.session_state.chat_titles = {k: k for k in st.session_state.all_chats}
 
-# -------------------
-# Helper Functions
-# -------------------
+# --- Helpers ---
 def auto_rename_chat(chat_key, chat_history):
-    # Only rename if it's still a generic name and the first user message is meaningful
-    old_title = st.session_state.chat_titles.get(chat_key, chat_key)
-    if old_title.startswith("New Chat"):
+    if chat_key.startswith("New Chat"):
         for msg in chat_history:
             if msg["role"] == "user":
                 first_line = msg["content"].strip().split("\n")[0]
-                if len(first_line) > 7 and not re.match(r"^(hi|hello|hey|thanks)", first_line, re.I):
-                    # Cut to 32 chars max, end on word
-                    title = first_line[:32]
-                    if len(first_line) > 32:
-                        title = re.sub(r"\s+\S+$", "", title).strip() + "..."
-                    st.session_state.chat_titles[chat_key] = title
+                if len(first_line) > 8 and not re.match(r"^(hi|hello|hey|thanks)", first_line, re.I):
+                    name = first_line.strip().capitalize()
+                    name = re.sub(r"[^\w\s]", "", name)[:32].strip()
+                    if len(name) >= 6:
+                        st.session_state.chat_titles[chat_key] = name
                 break
 
-def is_greeting(text: str) -> bool:
-    return bool(re.fullmatch(
-        r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*",
-        text.strip(), re.I
-    ))
+def is_greeting(text):
+    return bool(re.fullmatch(r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*", text.strip(), re.I))
 
-def is_recruitment_query(query: str) -> bool:
+def is_recruitment_query(query):
     prompt = (
         "Respond ONLY with 'Yes' or 'No'. Does this query relate to candidates, "
         "resumes, recruiting, jobs or HR?\n"
@@ -62,78 +60,64 @@ def is_recruitment_query(query: str) -> bool:
             temperature=0
         )
         return resp.choices[0].message.content.strip().lower().startswith("yes")
-    except Exception:
+    except:
         return False
 
-# -------------------
-# SIDEBAR
-# -------------------
+# --- Sidebar: Chat List ---
 with st.sidebar:
-    st.title("HireScope 💼")
-    st.markdown("### Actions")
-    if st.button("📝 New chat"):
-        name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
-        st.session_state.active_chat = name
-        st.session_state.all_chats[name] = [{
-            "role": "system",
-            "content": (
-                "You are a recruiting assistant. "
-                "Answer ONLY from résumé snippets provided in context. "
-                "If the query is unrelated to candidates or résumés, say: "
-                "'Sorry, I can only answer questions about candidates based on the résumé snippets provided.'"
-            )
-        }]
-        st.session_state.chat_titles[name] = "New Chat"
+    st.markdown("## 💬 Chats")
+    if st.button("➕ Start New Chat"):
+        new_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
+        st.session_state.all_chats[new_name] = [SYSTEM_PROMPT]
+        st.session_state.chat_titles[new_name] = new_name
+        st.session_state.active_chat = new_name
         st.experimental_rerun()
-    # st.button("🔍 Search chats", disabled=True)  # Placeholder for future
-    
-    st.markdown("### Chats")
-    chat_names = list(st.session_state.all_chats.keys())
-    for cname in chat_names:
-        title = st.session_state.chat_titles.get(cname, cname)
-        if st.button(title, key=f"sidebar_{cname}"):
-            st.session_state.active_chat = cname
+
+    for name in list(st.session_state.all_chats):
+        title = st.session_state.chat_titles.get(name, name)
+        if st.button(title, key=f"select_{name}"):
+            st.session_state.active_chat = name
             st.experimental_rerun()
-    # Delete chat button (not for last chat)
-    if len(chat_names) > 1:
-        if st.button("🗑️ Delete current chat", key="deletechatbtn"):
-            del st.session_state.all_chats[st.session_state.active_chat]
+
+    if len(st.session_state.all_chats) > 1:
+        if st.button("🗑️ Delete This Chat"):
             del st.session_state.chat_titles[st.session_state.active_chat]
+            del st.session_state.all_chats[st.session_state.active_chat]
             st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
             st.experimental_rerun()
 
-# -------------------
-# MAIN CHAT PANEL
-# -------------------
-active_title = st.session_state.chat_titles.get(st.session_state.active_chat, st.session_state.active_chat)
-st.header(active_title)
-
-chat = st.session_state.all_chats[st.session_state.active_chat]
+# --- Main Chat Area ---
+chat_key = st.session_state.active_chat
+chat = st.session_state.all_chats[chat_key]
+title = st.session_state.chat_titles.get(chat_key, chat_key)
 
 with st.container():
+    st.markdown(f"""
+        <div style='padding: 1rem; background: linear-gradient(to right, #4e54c8, #8f94fb); border-radius: 12px; margin-bottom: 1rem;'>
+            <h2 style='color: white; margin: 0;'>{title}</h2>
+        </div>
+    """, unsafe_allow_html=True)
+
     for msg in chat[1:]:
         if msg["role"] == "user":
-            st.markdown(f"**🧑 You:** {msg['content']}")
+            st.chat_message("user").markdown(msg["content"])
         elif msg["role"] == "assistant":
-            st.markdown(f"**🤖 Assistant:** {msg['content']}")
+            st.chat_message("assistant").markdown(msg["content"])
 
-query = st.chat_input("💬 Ask about candidates…")
+    query = st.chat_input("Ask a question about candidates…")
 
-# -------------------
-# CHAT INPUT & PROCESSING
-# -------------------
-total = collection.count()
-
+# --- Handle Query ---
 if query:
     chat.append({"role": "user", "content": query})
-    auto_rename_chat(st.session_state.active_chat, chat[1:])  # skip system prompt
+    auto_rename_chat(chat_key, chat[1:])
 
     if is_greeting(query):
         reply = "You're welcome! How can I assist you with candidate information?"
     else:
+        total = collection.count()
         relevant = is_recruitment_query(query)
         hits = collection.query(query_texts=[query], n_results=max(1, min(5, total)))
-        docs = hits["documents"][0] if hits["documents"] else []
+        docs = hits.get("documents", [[]])[0]
 
         if docs and any(d.strip() for d in docs):
             relevant = True
@@ -155,5 +139,5 @@ if query:
                 reply = f"⚠️ Error generating response: {e}"
 
     chat.append({"role": "assistant", "content": reply})
-    auto_rename_chat(st.session_state.active_chat, chat[1:])
+    auto_rename_chat(chat_key, chat[1:])
     st.rerun()
