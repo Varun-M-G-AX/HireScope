@@ -70,8 +70,17 @@ def extract_all_text(pdf_bytes: bytes) -> str:
 
 # Improved name extraction with more robust patterns.
 def extract_candidate_name(summary: str, fallback_filename: str) -> str:
-    """Extracts candidate name from summary, with fallback to filename."""
-    # Regex patterns looking for "Name: John Doe" type formats.
+    """Extract candidate name from structured summary JSON or fallback heuristics."""
+    
+    # Try JSON parsing first
+    try:
+        data = json.loads(summary)
+        if isinstance(data, dict) and "name" in data and data["name"].strip():
+            return data["name"].strip()
+    except json.JSONDecodeError:
+        pass  # fallback if it's not a JSON
+
+    # Regex patterns for fallback
     patterns = [
         r"(?i)^name[:\-]?\s*(.+)$",
         r"(?i)^candidate(?: name)?[:\-]?\s*(.+)$",
@@ -80,15 +89,14 @@ def extract_candidate_name(summary: str, fallback_filename: str) -> str:
     for pat in patterns:
         m = re.search(pat, summary, re.M)
         if m: return m.group(1).strip()
-    
-    # Heuristic: Find a capitalized name-like string in the first few lines.
+
+    # Fallback 2: capitalized first + last name in top lines
     for line in summary.splitlines()[:5]:
         line = line.strip("-• \t")
-        # Matches "John Doe", "J. Doe", "John Fitzgerald Doe"
         if re.fullmatch(r"[A-Z][a-zA-Z.'-]{1,}(?:\s[A-Z][a-zA-Z.'-]{1,})+", line):
-            return line.strip()
-            
-    # Fallback: Clean up the PDF filename.
+            return line
+
+    # Fallback 3: derive from filename
     clean_name = re.sub(r"[_-]", " ", fallback_filename).rsplit(".", 1)[0]
     return clean_name.title()
 
