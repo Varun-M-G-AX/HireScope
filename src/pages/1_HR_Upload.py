@@ -7,6 +7,7 @@ import PyPDF2
 from pdfminer.high_level import extract_text
 from pdf2image import convert_from_bytes
 import pytesseract
+import json
 
 # Assume these are defined in your utils.py
 from utils import summarize_resume, make_candidate_id, chroma_client, collection
