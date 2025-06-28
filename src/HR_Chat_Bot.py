@@ -156,4 +156,4 @@ if query:
 
     chat.append({"role": "assistant", "content": reply})
     auto_rename_chat(st.session_state.active_chat, chat[1:])
-    st.experimental_rerun()
+    st.rerun()
