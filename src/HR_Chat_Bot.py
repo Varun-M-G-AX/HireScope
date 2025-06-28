@@ -1,6 +1,7 @@
 import re
 import streamlit as st
 from datetime import datetime
+from streamlit.components.v1 import html
 from utils import collection, openai
 
 st.set_page_config(
@@ -32,18 +33,25 @@ if "chat_titles" not in st.session_state:
     st.session_state.chat_titles = {k: k for k in st.session_state.all_chats}
 
 # --- Helpers ---
-def auto_rename_chat(chat_key):
-    if chat_key.startswith("New Chat") and len(st.session_state.all_chats) >= 3:
-        chat = st.session_state.all_chats[chat_key]
-        for msg in chat:
-            if msg["role"] == "user":
-                content = msg["content"].strip()
-                if len(content) > 12 and not re.match(r"^(hi|hello|hey|thanks)", content, re.I):
-                    new_title = re.sub(r"[^\w\s]", "", content.split("\n")[0])[:32]
-                    if new_title:
-                        st.session_state.chat_titles[chat_key] = new_title.strip()
-                    break
+def should_rename(chat_key):
+    if not chat_key.startswith("New Chat"):
+        return False
+    if len(st.session_state.all_chats) < 3:
+        return False
+    chat = st.session_state.all_chats[chat_key]
+    user_msgs = [m for m in chat if m["role"] == "user"]
+    if len(user_msgs) < 2:
+        return False
+    first = user_msgs[0]["content"].strip()
+    return len(first) > 12 and not re.match(r"^(hi|hello|hey|thanks)", first, re.I)
 
+def rename_chat(chat_key):
+    user_msgs = [m for m in st.session_state.all_chats[chat_key] if m["role"] == "user"]
+    if user_msgs:
+        first = user_msgs[0]["content"].strip().split("\n")[0]
+        new_title = re.sub(r"[^\w\s]", "", first)[:32].strip().title()
+        if new_title:
+            st.session_state.chat_titles[chat_key] = new_title
 
 def is_greeting(text):
     return bool(re.fullmatch(r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*", text.strip(), re.I))
@@ -64,8 +72,33 @@ def is_recruitment_query(query):
     except:
         return False
 
+def show_typing_loader():
+    html("""
+    <style>
+    .dots {
+        font-size: 20px;
+        letter-spacing: 3px;
+        display: inline-block;
+        animation: blink 1.5s infinite;
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 0.2; }
+        50% { opacity: 1; }
+    }
+    </style>
+    <div class="dots">🤖 Typing<span>.</span><span>.</span><span>.</span></div>
+    """, height=40)
+
 # --- Sidebar: Chat List ---
 with st.sidebar:
+    st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     st.markdown("## 💬 Chats")
     if st.button("➕ Start New Chat"):
         new_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
@@ -107,7 +140,12 @@ with st.container():
 # --- Handle Query ---
 if query:
     chat.append({"role": "user", "content": query})
-    auto_rename_chat(chat_key)
+
+    if should_rename(chat_key):
+        rename_chat(chat_key)
+
+    with st.chat_message("assistant"):
+        show_typing_loader()
 
     if is_greeting(query):
         reply = "You're welcome! How can I assist you with candidate information?"
@@ -137,5 +175,4 @@ if query:
                 reply = f"⚠️ Error generating response: {e}"
 
     chat.append({"role": "assistant", "content": reply})
-    auto_rename_chat(chat_key)
     st.rerun()
