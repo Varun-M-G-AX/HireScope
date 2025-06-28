@@ -5,10 +5,12 @@ from utils import collection, openai
 
 st.set_page_config(page_title="💬 HireScope Chat", page_icon="💼", layout="wide", initial_sidebar_state="expanded")
 
-# ----- CSS for ChatGPT-like Sidebar and Chat Bubbles -----
+# ────────────────────────────────
+# CSS – ChatGPT-Like Sidebar and Chat
+# ────────────────────────────────
 st.markdown("""
 <style>
-/* Sidebar Chat List */
+/* Sidebar */
 .css-1l02zno {width: 320px !important; min-width: 260px;}
 .sidebar-chat-list {
     margin-top: 1.2rem;
@@ -112,9 +114,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ----- Session State -----
+# ────────────────────────────────
+# Session Initialization
+# ────────────────────────────────
 if "all_chats" not in st.session_state:
     st.session_state.all_chats = {}
+
 if "active_chat" not in st.session_state:
     default_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
     st.session_state.active_chat = default_name
@@ -138,7 +143,9 @@ def get_new_chat_name():
         name = f"{base} ({n})"
     return name
 
-# ----- Sidebar -----
+# ────────────────────────────────
+# Sidebar – ChatGPT-Style
+# ────────────────────────────────
 with st.sidebar:
     st.markdown("### 💼 Chats")
 
@@ -146,20 +153,11 @@ with st.sidebar:
     active = st.session_state.active_chat
 
     # Chat List
-    st.markdown('<ul class="sidebar-chat-list">', unsafe_allow_html=True)
     for cname in chat_names:
         selected = ("selected" if cname == active else "")
         icon = "💬" if cname.startswith("New Chat") else "🗂️"
-        chat_display = cname
-        st.markdown(
-            f"""
-            <li class="sidebar-chat-item {selected}" onclick="window.location.search='?active={cname.replace(' ', '+')}'">
-                <span class="icon">{icon}</span> {chat_display}
-                {"<button class='delete-chat-btn' onclick=\"window.parent.postMessage({type: 'deleteChat', chat: '" + cname + "'}, '*');event.stopPropagation();\">🗑️</button>" if len(chat_names) > 1 else ""}
-            </li>
-            """, unsafe_allow_html=True
-        )
-    st.markdown('</ul>', unsafe_allow_html=True)
+        if st.button(f"{icon}  {cname}", key=f"sidebar_{cname}", use_container_width=True):
+            st.session_state.active_chat = cname
 
     # Rename and Delete current chat
     st.markdown('<div class="rename-box">', unsafe_allow_html=True)
@@ -168,11 +166,9 @@ with st.sidebar:
         st.session_state.all_chats[new_name] = st.session_state.all_chats.pop(active)
         st.session_state.active_chat = new_name
         active = new_name
-    # Delete chat (only if more than one session)
     if len(chat_names) > 1:
         if st.button("🗑️ Delete chat", key="deletechatbtn", help="Delete this chat session permanently"):
             del st.session_state.all_chats[active]
-            # Switch to another chat
             st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -192,16 +188,12 @@ with st.sidebar:
         }]
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Switch chat (dropdown for accessibility)
-    st.selectbox("📂 Switch Chat", options=chat_names, index=chat_names.index(active), key="switchbox",
-                 on_change=lambda: st.session_state.update({"active_chat": st.session_state.switchbox}))
-
-
-# ----- Main Chat Area -----
-chat = st.session_state.all_chats[st.session_state.active_chat]
-
+# ────────────────────────────────
+# Main Chat Area
+# ────────────────────────────────
 st.title("💬 HireScope Chat Assistant")
 
+chat = st.session_state.all_chats[st.session_state.active_chat]
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in chat[1:]:
@@ -211,7 +203,9 @@ with st.container():
         st.markdown(f'<div class="{bubble_class}"><span class="bubble-role">{icon}</span>{msg["content"]}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ----- Helper Functions -----
+# ────────────────────────────────
+# Helper Functions
+# ────────────────────────────────
 def is_greeting(text: str) -> bool:
     return bool(re.fullmatch(
         r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*",
@@ -234,7 +228,9 @@ def is_recruitment_query(query: str) -> bool:
     except Exception:
         return False
 
-# ----- Chat Input & Processing -----
+# ────────────────────────────────
+# Chat Input & Processing
+# ────────────────────────────────
 query = st.chat_input("💬 Ask about candidates…")
 total = collection.count()
 
