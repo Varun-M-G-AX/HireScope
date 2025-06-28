@@ -3,56 +3,118 @@ import streamlit as st
 from datetime import datetime
 from utils import collection, openai
 
-st.set_page_config(page_title="💬 HireScope Chat", page_icon="💼", layout="wide")
+st.set_page_config(page_title="💬 HireScope Chat", page_icon="💼", layout="wide", initial_sidebar_state="expanded")
 
-# ────────────────────────────────
-# CSS – ChatGPT-Like Experience
-# ────────────────────────────────
+# ----- CSS for ChatGPT-like Sidebar and Chat Bubbles -----
 st.markdown("""
 <style>
+/* Sidebar Chat List */
+.css-1l02zno {width: 320px !important; min-width: 260px;}
+.sidebar-chat-list {
+    margin-top: 1.2rem;
+    padding: 0;
+    list-style: none;
+}
+.sidebar-chat-item {
+    padding: 0.85em 1em;
+    border-radius: 0.7em;
+    margin-bottom: 0.4em;
+    cursor: pointer;
+    font-size: 1.06em;
+    display: flex;
+    align-items: center;
+    background: #181c25;
+    transition: background 0.12s;
+    border: 1.2px solid transparent;
+}
+.sidebar-chat-item.selected, .sidebar-chat-item:hover {
+    background: #212738;
+    border-color: #7a8cff;
+    color: #7a8cff;
+}
+.sidebar-chat-item .icon {
+    margin-right: 0.7em;
+    font-size: 1.2em;
+}
+.sidebar-footer {
+    margin-top: 2.7em;
+    text-align: center;
+}
+.sidebar-newchat-btn {
+    width: 100%;
+    font-weight: 500;
+    padding: 0.6em 0;
+    border-radius: 0.6em;
+    background: #3346d3;
+    color: #fff;
+    border: none;
+    font-size: 1.1em;
+    margin-top: 0.5em;
+    transition: background 0.14s;
+}
+.sidebar-newchat-btn:hover {
+    background: #202b80;
+    color: #fff;
+}
+/* Chat Bubbles */
 .chat-bubble-user {
-    background: var(--primary-color);
-    color: white;
-    padding: 0.75rem 1rem;
+    background: #3346d3;
+    color: #fff;
+    padding: 0.78rem 1.1rem;
     border-radius: 1rem 1rem 0 1rem;
     margin-bottom: 0.5rem;
     align-self: flex-end;
-    max-width: 80%;
+    max-width: 82%;
+    font-size: 1.08em;
+    box-shadow: 0 2px 12px #0001;
 }
 .chat-bubble-assistant {
     background: #f1f3f5;
-    color: black;
-    padding: 0.75rem 1rem;
+    color: #181c25;
+    padding: 0.78rem 1.1rem;
     border-radius: 1rem 1rem 1rem 0;
     margin-bottom: 0.5rem;
     align-self: flex-start;
-    max-width: 80%;
+    max-width: 82%;
+    font-size: 1.08em;
+    box-shadow: 0 2px 12px #0001;
 }
 .chat-container {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     margin-top: 1rem;
+    min-height: 60vh;
 }
-.sidebar-title {
-    font-weight: bold;
-    font-size: 1.1rem;
-    margin-top: 1rem;
+.bubble-role {
+    display: inline-block;
+    vertical-align: top;
+    margin-right: 0.65em;
+    font-size: 1.15em;
+}
+.rename-box {
+    margin-bottom: 1em;
+    text-align: left;
+}
+.delete-chat-btn {
+    padding: 0.18em 0.6em;
+    border-radius: 0.5em;
+    background: #e84118;
+    color: #fff;
+    font-size: 0.95em;
+    border: none;
+    margin-left: 0.5em;
+    margin-top: -2px;
+}
+.delete-chat-btn:hover {
+    background: #c23616;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ────────────────────────────────
-# Title
-# ────────────────────────────────
-st.title("💬 HireScope Chat Assistant")
-
-# ────────────────────────────────
-# Session Initialization
-# ────────────────────────────────
+# ----- Session State -----
 if "all_chats" not in st.session_state:
     st.session_state.all_chats = {}
-
 if "active_chat" not in st.session_state:
     default_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
     st.session_state.active_chat = default_name
@@ -66,51 +128,90 @@ if "active_chat" not in st.session_state:
         )
     }]
 
-chat = st.session_state.all_chats[st.session_state.active_chat]
+# Utility to create unique chat names
+def get_new_chat_name():
+    base = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
+    n = 1
+    name = base
+    while name in st.session_state.all_chats:
+        n += 1
+        name = f"{base} ({n})"
+    return name
 
-# ────────────────────────────────
-# Sidebar – Chat Controls
-# ────────────────────────────────
-st.sidebar.markdown("## 💼 Chats")
-current = st.session_state.active_chat
-new_name = st.sidebar.text_input("📝 Rename chat", value=current)
-if new_name and new_name.strip() != current and new_name not in st.session_state.all_chats:
-    st.session_state.all_chats[new_name] = st.session_state.all_chats.pop(current)
-    st.session_state.active_chat = new_name
+# ----- Sidebar -----
+with st.sidebar:
+    st.markdown("### 💼 Chats")
 
-chat_names = list(st.session_state.all_chats.keys())
-selected = st.sidebar.selectbox("📂 Switch Chat", options=chat_names, index=chat_names.index(st.session_state.active_chat))
-if selected != st.session_state.active_chat:
-    st.session_state.active_chat = selected
+    chat_names = list(st.session_state.all_chats.keys())
+    active = st.session_state.active_chat
 
-if st.sidebar.button("➕ New Chat"):
-    name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
-    st.session_state.active_chat = name
-    st.session_state.all_chats[name] = [{
-        "role": "system",
-        "content": (
-            "You are a recruiting assistant. "
-            "Answer ONLY from résumé snippets provided in context. "
-            "If the query is unrelated to candidates or résumés, say: "
-            "'Sorry, I can only answer questions about candidates based on the résumé snippets provided.'"
+    # Chat List
+    st.markdown('<ul class="sidebar-chat-list">', unsafe_allow_html=True)
+    for cname in chat_names:
+        selected = ("selected" if cname == active else "")
+        icon = "💬" if cname.startswith("New Chat") else "🗂️"
+        chat_display = cname
+        st.markdown(
+            f"""
+            <li class="sidebar-chat-item {selected}" onclick="window.location.search='?active={cname.replace(' ', '+')}'">
+                <span class="icon">{icon}</span> {chat_display}
+                {"<button class='delete-chat-btn' onclick=\"window.parent.postMessage({type: 'deleteChat', chat: '" + cname + "'}, '*');event.stopPropagation();\">🗑️</button>" if len(chat_names) > 1 else ""}
+            </li>
+            """, unsafe_allow_html=True
         )
-    }]
+    st.markdown('</ul>', unsafe_allow_html=True)
 
+    # Rename and Delete current chat
+    st.markdown('<div class="rename-box">', unsafe_allow_html=True)
+    new_name = st.text_input("📝 Rename chat", value=active, key="renamebox")
+    if new_name and new_name.strip() != active and new_name not in st.session_state.all_chats:
+        st.session_state.all_chats[new_name] = st.session_state.all_chats.pop(active)
+        st.session_state.active_chat = new_name
+        active = new_name
+    # Delete chat (only if more than one session)
+    if len(chat_names) > 1:
+        if st.button("🗑️ Delete chat", key="deletechatbtn", help="Delete this chat session permanently"):
+            del st.session_state.all_chats[active]
+            # Switch to another chat
+            st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # New Chat button at sidebar bottom
+    st.markdown('<div class="sidebar-footer">', unsafe_allow_html=True)
+    if st.button("➕ New Chat", key="newchatbtn", help="Start a new chat session"):
+        name = get_new_chat_name()
+        st.session_state.active_chat = name
+        st.session_state.all_chats[name] = [{
+            "role": "system",
+            "content": (
+                "You are a recruiting assistant. "
+                "Answer ONLY from résumé snippets provided in context. "
+                "If the query is unrelated to candidates or résumés, say: "
+                "'Sorry, I can only answer questions about candidates based on the résumé snippets provided.'"
+            )
+        }]
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Switch chat (dropdown for accessibility)
+    st.selectbox("📂 Switch Chat", options=chat_names, index=chat_names.index(active), key="switchbox",
+                 on_change=lambda: st.session_state.update({"active_chat": st.session_state.switchbox}))
+
+
+# ----- Main Chat Area -----
 chat = st.session_state.all_chats[st.session_state.active_chat]
 
-# ────────────────────────────────
-# Chat Message Renderer
-# ────────────────────────────────
+st.title("💬 HireScope Chat Assistant")
+
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in chat[1:]:
-        bubble_class = "chat-bubble-user" if msg["role"] == "user" else "chat-bubble-assistant"
-        st.markdown(f'<div class="{bubble_class}">{msg["content"]}</div>', unsafe_allow_html=True)
+        is_user = msg["role"] == "user"
+        bubble_class = "chat-bubble-user" if is_user else "chat-bubble-assistant"
+        icon = "🧑" if is_user else "🤖"
+        st.markdown(f'<div class="{bubble_class}"><span class="bubble-role">{icon}</span>{msg["content"]}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ────────────────────────────────
-# Helper Functions
-# ────────────────────────────────
+# ----- Helper Functions -----
 def is_greeting(text: str) -> bool:
     return bool(re.fullmatch(
         r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*",
@@ -133,9 +234,7 @@ def is_recruitment_query(query: str) -> bool:
     except Exception:
         return False
 
-# ────────────────────────────────
-# Chat Input & Processing
-# ────────────────────────────────
+# ----- Chat Input & Processing -----
 query = st.chat_input("💬 Ask about candidates…")
 total = collection.count()
 
