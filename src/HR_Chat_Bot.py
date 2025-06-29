@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- SVG Avatars (Bootstrap Icons, theme aware via CSS) ---
+# --- SVG Avatars & Icons (Bootstrap) ---
 ROBOT_SVG = """
 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor"
 class="bi bi-robot" viewBox="0 0 16 16">
@@ -27,11 +27,24 @@ class="bi bi-person-square" viewBox="0 0 16 16">
 </svg>
 """
 EDIT_SVG = """
-<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
-class="bi bi-pencil-square" viewBox="0 0 16 16">
-  <path d="M15.502 1.94a.5.5 0 0 1 0 .706l-1 1a.5.5 0 0 1-.708 0l-1-1a.5.5 0 0 1 .708-.708l.646.647.646-.646a.5.5 0 0 1 .708 0z"/>
-  <path d="M13.5 3.207l-1-1L4.854 9.854a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l7.646-7.647zm-1.415 2.122L5.207 12.207l-1.147.382.382-1.147 6.879-6.879 1.146 1.147z"/>
-  <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-7A.5.5 0 0 0 14 6v7.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H10a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+  <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+  <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+</svg>
+"""
+SAVE_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check" viewBox="0 0 16 16">
+  <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/>
+</svg>
+"""
+DELETE_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
+  <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0"/>
+</svg>
+"""
+CANCEL_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16">
+  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
 </svg>
 """
 
@@ -106,26 +119,33 @@ body { background: var(--background-color) !important; }
 }
 /* Sidebar chat list and rename */
 .sidebar-chat-row {
-    display: flex; align-items: center; gap: 0.5rem;
-    margin-bottom: 0.2rem;
+    display: flex; align-items: center; gap: 0.4rem;
+    margin-bottom: 0.3rem; padding: 0.2rem 0.1rem 0.2rem 0.2rem;
+    border-radius: 7px;
+    transition: background .18s;
+}
+.sidebar-chat-row.active {
+    background: rgba(113,117,118,0.09);
 }
 .sidebar-chat-avatar {
     min-width: 22px; min-height: 22px; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
     background: var(--secondary-background-color, #e2e2e1);
 }
-.sidebar-chat-avatar svg { width: 20px; height: 20px; color: var(--text-color, #181818);}
+.sidebar-chat-avatar svg { width: 19px; height: 19px; color: var(--text-color, #181818);}
 .sidebar-chat-title {
     flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 1rem;
 }
+.sidebar-chat-title-active { font-weight: 700; color: var(--primary-color, #242424);}
 .sidebar-chat-btn {
-    background: none; border: none; padding: 0;
+    background: none; border: none; padding: 0 3px; margin: 0 2px 0 0;
     color: var(--text-color, #181818); cursor: pointer;
+    vertical-align: middle;
 }
 .sidebar-chat-btn:focus { outline: none; }
-.sidebar-chat-title-active { font-weight: 700; color: var(--primary-color, #242424);}
 .sidebar-rename-input {
-    width: 72%; border-radius: 6px; padding: 2px 8px;
+    width: 70%; border-radius: 6px; padding: 2px 8px;
     border: 1.2px solid var(--primary-color, #242424);
     font-size: 1rem; margin-right: 0.3rem;
 }
@@ -190,7 +210,7 @@ def show_typing_indicator():
     </div>
     """, unsafe_allow_html=True)
 
-def truncate_title(title, max_length=28):
+def truncate_title(title, max_length=24):
     return title if len(title) <= max_length else title[:max_length-3] + "..."
 
 # --- Sidebar: Chat List with Rename ---
@@ -209,57 +229,52 @@ with st.sidebar:
         for name in sorted_chats:
             is_active = name == st.session_state.active_chat
             display_title = st.session_state.chat_titles.get(name, name)
-            row_key = f"row_{name}"
-            avatar_svg = ROBOT_SVG
-            # Sidebar chat row
-            st.markdown(f"""<div class="sidebar-chat-row">""", unsafe_allow_html=True)
+            row_class = "sidebar-chat-row active" if is_active else "sidebar-chat-row"
+            st.markdown(f"""<div class="{row_class}">""", unsafe_allow_html=True)
             st.markdown(
                 f"""<div class="sidebar-chat-avatar">{ROBOT_SVG}</div>""",
                 unsafe_allow_html=True
             )
             # Rename UI
             if st.session_state.editing_title == name:
-                new_val = st.text_input(
-                    "", value=display_title, key=f"rename_{name}",
-                    label_visibility="collapsed",
-                    help="Edit chat title",
-                    max_chars=40,
-                    placeholder="Edit chat title"
+                st.write(
+                    f'<input class="sidebar-rename-input" type="text" id="rename_{name}" value="{display_title}" maxlength="40"/>',
+                    unsafe_allow_html=True
                 )
-                col1, col2 = st.columns([1,1])
-                with col1:
-                    if st.button("💾", key=f"rename_save_{name}"):
-                        st.session_state.chat_titles[name] = new_val
-                        st.session_state.editing_title = None
-                        st.rerun()
-                with col2:
-                    if st.button("❌", key=f"rename_cancel_{name}"):
-                        st.session_state.editing_title = None
-                        st.rerun()
+                st.markdown(
+                    f"""
+                    <button class="sidebar-chat-btn" onclick="window.parent.postMessage({{type: 'save_{name}'}}, '*')" title="Save">{SAVE_SVG}</button>
+                    <button class="sidebar-chat-btn" onclick="window.parent.postMessage({{type: 'cancel_{name}'}}, '*')" title="Cancel">{CANCEL_SVG}</button>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
                 # Title with active state
-                style = "sidebar-chat-title sidebar-chat-title-active" if is_active else "sidebar-chat-title"
+                title_class = "sidebar-chat-title sidebar-chat-title-active" if is_active else "sidebar-chat-title"
                 if st.button(truncate_title(display_title), key=f"select_{name}", use_container_width=True):
                     st.session_state.active_chat = name
                     st.session_state.is_generating = False
                     st.session_state.editing_title = None
                     st.rerun()
                 # Edit icon
-                edit_btn_key = f"edit_{name}"
-                if st.button(f"{EDIT_SVG}", key=edit_btn_key, help="Rename chat", use_container_width=False):
+                if st.button("Rename", key=f"edit_{name}", help="Rename chat", use_container_width=False):
                     st.session_state.editing_title = name
                     st.rerun()
+                st.markdown(f"""<span class="sidebar-chat-btn" style="margin-left:0.1rem;">{EDIT_SVG}</span>""", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
-
     if len(st.session_state.all_chats) > 1:
-        if st.button("🗑️ Delete Current Chat", key="delete_chat", use_container_width=True):
-            if st.session_state.active_chat in st.session_state.all_chats:
-                del st.session_state.chat_titles[st.session_state.active_chat]
-                del st.session_state.all_chats[st.session_state.active_chat]
-                st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
-                st.session_state.is_generating = False
-                st.session_state.editing_title = None
-                st.rerun()
+        del_col1, del_col2 = st.columns([1,7])
+        with del_col1:
+            st.markdown(f'<span class="sidebar-chat-avatar">{DELETE_SVG}</span>', unsafe_allow_html=True)
+        with del_col2:
+            if st.button("Delete Current Chat", key="delete_chat", use_container_width=True):
+                if st.session_state.active_chat in st.session_state.all_chats:
+                    del st.session_state.chat_titles[st.session_state.active_chat]
+                    del st.session_state.all_chats[st.session_state.active_chat]
+                    st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
+                    st.session_state.is_generating = False
+                    st.session_state.editing_title = None
+                    st.rerun()
     st.markdown("<hr>", unsafe_allow_html=True)
 
 # --- Main UI ---
