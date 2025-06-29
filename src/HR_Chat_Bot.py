@@ -20,125 +20,74 @@ st.markdown("""
     padding-top: 1rem;
     padding-bottom: 1rem;
 }
-
 /* Sidebar responsiveness */
 section[data-testid="stSidebar"] > div {
     overflow-y: auto;
     max-height: 85vh;
     padding-top: 1rem;
 }
-
 /* Chat header */
 .chat-header {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: linear-gradient(135deg, #667eea, #764ba2);
     padding: 1.5rem;
     border-radius: 12px;
     margin-bottom: 1.5rem;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    color: white;
 }
 .chat-header h2 {
-    color: var(--text-color);
     margin: 0;
     font-weight: 600;
     font-size: 1.5rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-
 /* Chat messages */
-.stChatMessage {
+.chat-message {
+    padding: 0.75rem;
+    border-radius: 12px;
     margin-bottom: 1rem;
+    max-width: 80%;
 }
-
+.user-message {
+    background-color: #e1f5fe;
+    align-self: flex-end;
+}
+.assistant-message {
+    background-color: #f1f8e9;
+    align-self: flex-start;
+}
 /* Buttons */
 .stButton > button {
     width: 100%;
     border-radius: 8px;
     padding: 0.5rem 1rem;
     font-weight: 500;
-    background: var(--secondary-background-color);
-    color: var(--text-color);
-    border: 1px solid var(--primary-color);
+    background: #667eea;
+    color: white;
+    border: none;
     transition: all 0.3s ease;
 }
 .stButton > button:hover {
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(0,0,0,0.1);
 }
-
-/* New chat button */
-.new-chat-btn button {
-    background: var(--primary-color);
-    color: white;
-    font-weight: 600;
-}
-
-/* Delete button */
-.delete-btn button {
-    background: #ff4b4b;
-    color: white;
-}
-
-/* Chat selection buttons */
-.chat-btn button {
-    background: var(--background-color);
-    color: var(--text-color);
-    border: 1px solid var(--secondary-color);
-    margin-bottom: 0.5rem;
-    text-align: left;
-    font-size: 0.9rem;
-}
-.chat-btn button:hover {
-    background: var(--secondary-background-color);
-    border-color: var(--primary-color);
-}
-
 /* Typing indicator */
 .typing-indicator {
     display: flex;
     align-items: center;
     padding: 0.75rem 1rem;
-    background: var(--background-color);
+    background: #f1f1f1;
     border-radius: 12px;
     margin-top: 1rem;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    color: var(--text-color);
+    color: #666;
 }
-.typing-dots {
-    display: flex;
-    gap: 4px;
-    margin-left: 0.75rem;
-}
-.typing-dots span {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--text-color);
-    animation: typingBlink 1.4s infinite ease-in-out;
-}
-.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
-.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
-.typing-dots span:nth-child(3) { animation-delay: 0; }
-
-@keyframes typingBlink {
-    0%, 80%, 100% {
-        transform: scale(0.75);
-        opacity: 0.5;
-    }
-    40% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
 /* Empty state */
 .empty-state {
     text-align: center;
     padding: 2rem;
-    color: var(--text-color);
-    opacity: 0.7;
+    color: #666;
     font-style: italic;
 }
-
 /* Errors & Success Alerts */
 .error-message {
     background: rgba(255, 0, 0, 0.05);
@@ -152,7 +101,6 @@ section[data-testid="stSidebar"] > div {
     padding: 1rem;
     border-radius: 8px;
 }
-
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .chat-header {
@@ -165,7 +113,6 @@ section[data-testid="stSidebar"] > div {
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # --- Chat Context Prompt ---
 SYSTEM_PROMPT = {
@@ -190,85 +137,18 @@ if "chat_titles" not in st.session_state:
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
 
-# --- Helper Functions ---
-def should_rename(chat_key):
-    """Determine if a chat should be auto-renamed based on content"""
-    if not chat_key.startswith("New Chat"):
-        return False
-    if len(st.session_state.all_chats) < 3:
-        return False
-    chat = st.session_state.all_chats[chat_key]
-    user_msgs = [m for m in chat if m["role"] == "user"]
-    if len(user_msgs) < 2:
-        return False
-    first = user_msgs[0]["content"].strip()
-    return len(first) > 12 and not re.match(r"^(hi|hello|hey|thanks)", first, re.I)
-
-def rename_chat(chat_key):
-    """Auto-rename chat based on first meaningful message"""
-    user_msgs = [m for m in st.session_state.all_chats[chat_key] if m["role"] == "user"]
-    if user_msgs:
-        first = user_msgs[0]["content"].strip().split("\n")[0]
-        new_title = re.sub(r"[^\w\s]", "", first)[:40].strip().title()
-        if new_title and len(new_title) > 3:
-            st.session_state.chat_titles[chat_key] = new_title
-
-def is_greeting(text):
-    """Check if message is a simple greeting"""
-    return bool(re.fullmatch(r"(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))[!. ]*", text.strip(), re.I))
-
-def is_recruitment_query(query):
-    """Use AI to determine if query is recruitment-related"""
-    prompt = (
-        "Respond ONLY with 'Yes' or 'No'. Does this query relate to candidates, "
-        "resumes, recruiting, jobs, hiring, or HR?\n"
-        f"Query: \"{query}\""
-    )
-    try:
-        resp = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-            max_tokens=10
-        )
-        return resp.choices[0].message.content.strip().lower().startswith("yes")
-    except Exception as e:
-        st.error(f"Error checking query relevance: {e}")
-        return False
-
-def show_typing_indicator():
-    """Display animated typing indicator"""
-    return st.markdown("""
-    <div class="typing-indicator">
-        <span style="color: #667eea; font-weight: 600;">🤖 AI is thinking</span>
-        <div class="typing-dots">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-def truncate_title(title, max_length=30):
-    """Truncate chat title for display"""
-    if len(title) <= max_length:
-        return title
-    return title[:max_length-3] + "..."
-
 # --- Sidebar: Chat Management ---
 with st.sidebar:
     st.markdown("## 💬 Chat History")
     
     # New Chat Button
-    st.markdown('<div class="new-chat-btn">', unsafe_allow_html=True)
     if st.button("➕ Start New Chat", key="new_chat"):
         new_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
         st.session_state.all_chats[new_name] = [SYSTEM_PROMPT]
         st.session_state.chat_titles[new_name] = new_name
         st.session_state.active_chat = new_name
         st.session_state.is_generating = False
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.experimental_rerun()
     
     # Chat List
     if st.session_state.all_chats:
@@ -277,37 +157,28 @@ with st.sidebar:
         
         for name in sorted_chats:
             title = st.session_state.chat_titles.get(name, name)
-            display_title = truncate_title(title)
-            
-            # Highlight active chat
             if name == st.session_state.active_chat:
-                st.markdown(f"**🔵 {display_title}**")
+                st.markdown(f"**🔵 {title}**")
             else:
-                st.markdown('<div class="chat-btn">', unsafe_allow_html=True)
-                if st.button(display_title, key=f"select_{name}"):
+                if st.button(title, key=f"select_{name}"):
                     st.session_state.active_chat = name
                     st.session_state.is_generating = False
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+                    st.experimental_rerun()
     
     # Delete Chat Button
     if len(st.session_state.all_chats) > 1:
         st.markdown("---")
-        st.markdown('<div class="delete-btn">', unsafe_allow_html=True)
         if st.button("🗑️ Delete Current Chat", key="delete_chat"):
             if st.session_state.active_chat in st.session_state.all_chats:
                 del st.session_state.chat_titles[st.session_state.active_chat]
                 del st.session_state.all_chats[st.session_state.active_chat]
                 st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
                 st.session_state.is_generating = False
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+                st.experimental_rerun()
     
     # Statistics
     st.markdown("---")
-    st.markdown("### 📊 Statistics")
     st.markdown(f"**Total Chats:** {len(st.session_state.all_chats)}")
-    
     current_chat = st.session_state.all_chats.get(st.session_state.active_chat, [])
     message_count = len([m for m in current_chat if m["role"] != "system"])
     st.markdown(f"**Messages in Chat:** {message_count}")
@@ -337,8 +208,11 @@ with message_container:
         """, unsafe_allow_html=True)
     else:
         for msg in chat[1:]:  # Skip system message
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+            with st.container():
+                if msg["role"] == "user":
+                    st.markdown(f'<div class="chat-message user-message">{msg["content"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="chat-message assistant-message">{msg["content"]}</div>', unsafe_allow_html=True)
 
 # Show typing indicator if generating
 if st.session_state.is_generating:
@@ -355,19 +229,14 @@ if query and not st.session_state.is_generating:
     # Add user message
     chat.append({"role": "user", "content": query})
     
-    # Auto-rename chat if needed
-    if should_rename(chat_key):
-        rename_chat(chat_key)
-    
     # Show user message immediately
-    with st.chat_message("user"):
-        st.markdown(query)
+    with st.container():
+        st.markdown(f'<div class="chat-message user-message">{query}</div>', unsafe_allow_html=True)
     
     # Show typing indicator
-    with st.chat_message("assistant"):
-        typing_placeholder = st.empty()
-        with typing_placeholder:
-            show_typing_indicator()
+    typing_placeholder = st.empty()
+    with typing_placeholder:
+        show_typing_indicator()
     
     # Process query
     try:
@@ -427,7 +296,8 @@ if query and not st.session_state.is_generating:
         
         # Clear typing indicator and show response
         typing_placeholder.empty()
-        st.markdown(reply)
+        with st.container():
+            st.markdown(f'<div class="chat-message assistant-message">{reply}</div>', unsafe_allow_html=True)
         
     except Exception as e:
         typing_placeholder.empty()
@@ -437,7 +307,7 @@ if query and not st.session_state.is_generating:
     
     finally:
         st.session_state.is_generating = False
-        st.rerun()
+        st.experimental_rerun()
 
 # --- Footer ---
 st.markdown("---")
