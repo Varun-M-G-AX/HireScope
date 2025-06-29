@@ -1,213 +1,75 @@
 import re
 import streamlit as st
 from datetime import datetime
-from streamlit.components.v1 import html
 from utils import collection, openai
 
-# --- Page Configuration ---
-st.set_page_config(
-    page_title="💬 HireScope Chat",
-    page_icon="💼",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- Theme Setup ---
+if "theme_mode" not in st.session_state:
+    st.session_state.theme_mode = "light"
 
-# --- Custom CSS for ChatGPT-like UI, with dark/light support ---
-st.markdown("""
+with st.sidebar:
+    st.markdown("### 🖼️ Appearance")
+    theme_options = {"Light": "light", "Dark": "dark"}
+    chosen = st.radio(
+        "Choose theme", 
+        list(theme_options.keys()), 
+        horizontal=True, 
+        index=0 if st.session_state.theme_mode == "light" else 1
+    )
+    st.session_state.theme_mode = theme_options[chosen]
+
+THEME = st.session_state.theme_mode
+
+# --- Custom CSS with toggleable dark/light mode ---
+css_light = """
+<link href='https://css.gg/icons/css/bot.css' rel='stylesheet'>
+<link href='https://css.gg/icons/css/profile.css' rel='stylesheet'>
 <style>
-:root {
-    --primary-bg: #f3f3f3;
-    --secondary-bg: #e2e2e1;
-    --user-message-bg: #e2e2e1;
-    --assistant-message-bg: #717576;
-    --assistant-message-color: #fff;
-    --user-message-color: #242424;
-    --border-color: #717576;
-    --sidebar-bg: #e2e2e1;
-    --sidebar-color: #242424;
-    --primary-color: #717576;
-    --shadow: 0 4px 20px 0 rgba(0,0,0,.10);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --primary-bg: #181818;
-    --secondary-bg: #242424;
-    --user-message-bg: #242424;
-    --assistant-message-bg: #e2e2e1;
-    --assistant-message-color: #181818;
-    --user-message-color: #e2e2e1;
-    --border-color: #717576;
-    --sidebar-bg: #242424;
-    --sidebar-color: #e2e2e1;
-    --primary-color: #717576;
-    --shadow: 0 4px 20px 0 rgba(0,0,0,.15);
-  }
-}
-body {
-    background: var(--primary-bg) !important;
-}
-section[data-testid="stSidebar"] {
-    background-color: var(--sidebar-bg) !important;
-    color: var(--sidebar-color) !important;
-    min-width:260px !important;
-    max-width:320px !important;
-    border-right: 1px solid var(--border-color);
-}
-.st-emotion-cache-1avcm0n {
-    background: var(--primary-bg) !important;
-}
-#MainMenu, header, footer {visibility: hidden;}
-/* Chat container styles */
-.chatgpt-container {
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 1.5rem 0 0 0;
-}
+body { background: #f3f3f3 !important; }
 .chatgpt-header {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--assistant-message-bg);
-    text-align: center;
-    padding: 1.5rem 0 1rem 0;
-    letter-spacing: -1px;
+    font-size: 2.2rem; font-weight: 800; color: #bdbdbd;
+    text-align: center; margin-top:1.7rem; margin-bottom:3rem; letter-spacing:-1px;
 }
-.chatgpt-message-row {
-    display: flex;
-    gap: 1.2rem;
-    margin-bottom: 1.5rem;
+.chatgpt-container { max-width: 760px; margin: 0 auto; }
+.message-row {
+    display: flex; align-items: flex-end; margin-bottom: 1.7rem; width: 100%;
 }
-.chatgpt-message-row.user {
-    flex-direction: row-reverse;
+.message-row.user { flex-direction: row-reverse; }
+.avatar {
+    width: 44px; height: 44px; border-radius: 10px; background: #e2e2e1; 
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.7rem; margin-left: 16px; margin-right: 16px; box-shadow: 0 2px 12px #0001;
 }
-.chatgpt-avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    background: #232323;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.7rem;
-    color: #fff;
-    border: 2px solid var(--border-color);
+.avatar.bot { background: #717576; color: #fff; }
+.avatar.user { background: #e2e2e1; color: #242424; }
+.bubble {
+    border-radius: 1.1rem; box-shadow: 0 2px 12px #0001;
+    padding: 1.2rem 1.35rem; font-size: 1.13rem; line-height: 1.7;
+    min-width: 90px; max-width: 82vw; width: 100%; display: inline-block;
+    border: 1.5px solid #ddd;
 }
-.chatgpt-message {
-    padding: 1.1rem 1.35rem;
-    border-radius: 0.9rem;
-    font-size: 1.1rem;
-    line-height: 1.6;
-    max-width: 82%;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border-color);
-    white-space: pre-wrap;
-    word-break: break-word;
+.bubble.user {
+    background: #242424; color: #e2e2e1; border-top-right-radius: 0.5rem;
+    margin-left: auto; margin-right: 0;
 }
-.chatgpt-message.user {
-    background: var(--user-message-bg);
-    color: var(--user-message-color);
-    border-bottom-right-radius: 0.25rem;
+.bubble.bot {
+    background: #e2e2e1; color: #181818; border-top-left-radius: 0.5rem;
+    margin-right: auto; margin-left: 0;
 }
-.chatgpt-message.assistant {
-    background: var(--assistant-message-bg);
-    color: var(--assistant-message-color);
-    border-bottom-left-radius: 0.25rem;
-}
-.chatgpt-timestamp {
-    font-size: 0.76rem;
-    color: #999;
-    margin-top: 0.2em;
-    margin-left: 2.6em;
-}
-.chatgpt-empty {
-    text-align:center;
-    color:#bdbdbd;
-    margin-top:3rem;
-    font-size:1.1rem;
-    opacity:0.7;
-}
-.chatgpt-sidebar-title {
-    font-size: 1.23rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    margin-bottom: 1.3rem;
-    color: var(--sidebar-color);
-    text-align: left;
-}
-.chatgpt-sidebar-btn, .chatgpt-sidebar-btn-active {
-    background: none;
-    border: none;
-    color: inherit;
-    padding: 0.6rem 1rem;
-    text-align: left;
-    width: 100%;
-    font-size: 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.2rem;
-    cursor: pointer;
-    transition: background 0.18s;
-}
-.chatgpt-sidebar-btn:hover {
-    background: #292929;
-}
-.chatgpt-sidebar-btn-active {
-    background: #313133;
-    color: #e2e2e1;
-    font-weight: 700;
-}
-.chatgpt-sidebar-btn-delete {
-    background: #ff7272;
-    color: #fff;
-    border: none;
-    width: 100%;
-    border-radius: 8px;
-    padding: 0.55rem 1rem;
-    font-size: 1rem;
-    margin-top: 1rem;
-    cursor: pointer;
-    transition: background 0.16s;
-}
-.chatgpt-sidebar-btn-delete:hover {
-    background: #e62e2e;
-}
-.stChatInputContainer input {
-    font-size: 1.1rem !important;
-    border-radius: 10px !important;
-    background: var(--secondary-bg) !important;
-    color: var(--user-message-color) !important;
-    border: 1.5px solid var(--border-color) !important;
-}
-.stChatInputContainer button {
-    background: var(--primary-color) !important;
-    color: var(--assistant-message-bg) !important;
-    font-weight: 700 !important;
-    border-radius: 10px !important;
-    font-size: 1.1rem !important;
-    border: none !important;
+.timestamp {
+    font-size: 0.8rem; color: #969696; margin: 0.2em 0.4em;
+    text-align: right;
 }
 .typing-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.8rem 1.2rem;
-    background: #212121;
-    color: #e2e2e1;
-    border-radius: 15px;
-    width: fit-content;
-    margin-left: 0.5rem;
-    margin-bottom: 1.1rem;
-    box-shadow: 0 2px 8px #0002;
-    font-size: 1.02rem;
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.8rem 1.2rem; background: #ededed; color: #717576;
+    border-radius: 15px; width: fit-content; margin-left: 0.5rem; margin-bottom: 1.1rem;
+    box-shadow: 0 2px 8px #0002; font-size: 1.02rem;
 }
-.typing-dots {
-    display: flex;
-    gap: 0.35rem;
-}
+.typing-dots { display: flex; gap: 0.35rem; }
 .typing-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #717576;
-    animation: typingAnimation 1.4s infinite ease-in-out;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #717576; animation: typingAnimation 1.4s infinite ease-in-out;
 }
 .typing-dot:nth-child(1) { animation-delay: 0s; }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -217,7 +79,69 @@ section[data-testid="stSidebar"] {
     30% { transform: translateY(-7px); opacity: 1; }
 }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+css_dark = """
+<link href='https://css.gg/icons/css/bot.css' rel='stylesheet'>
+<link href='https://css.gg/icons/css/profile.css' rel='stylesheet'>
+<style>
+body { background: #181818 !important; }
+.chatgpt-header {
+    font-size: 2.2rem; font-weight: 800; color: #717576;
+    text-align: center; margin-top:1.7rem; margin-bottom:3rem; letter-spacing:-1px;
+}
+.chatgpt-container { max-width: 760px; margin: 0 auto; }
+.message-row {
+    display: flex; align-items: flex-end; margin-bottom: 1.7rem; width: 100%;
+}
+.message-row.user { flex-direction: row-reverse; }
+.avatar {
+    width: 44px; height: 44px; border-radius: 10px; background: #313133;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.7rem; margin-left: 16px; margin-right: 16px; box-shadow: 0 3px 18px #0006;
+}
+.avatar.bot { background: #717576; color: #fff; }
+.avatar.user { background: #242424; color: #e2e2e1; }
+.bubble {
+    border-radius: 1.1rem; box-shadow: 0 3px 18px #0005;
+    padding: 1.2rem 1.35rem; font-size: 1.13rem; line-height: 1.7;
+    min-width: 90px; max-width: 82vw; width: 100%; display: inline-block;
+    border: 1.5px solid #313133;
+}
+.bubble.user {
+    background: #242424; color: #e2e2e1; border-top-right-radius: 0.5rem;
+    margin-left: auto; margin-right: 0;
+}
+.bubble.bot {
+    background: #e2e2e1; color: #181818; border-top-left-radius: 0.5rem;
+    margin-right: auto; margin-left: 0;
+}
+.timestamp {
+    font-size: 0.8rem; color: #717576; margin: 0.2em 0.4em;
+    text-align: right;
+}
+.typing-indicator {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.8rem 1.2rem; background: #232323; color: #e2e2e1;
+    border-radius: 15px; width: fit-content; margin-left: 0.5rem; margin-bottom: 1.1rem;
+    box-shadow: 0 2px 8px #0002; font-size: 1.02rem;
+}
+.typing-dots { display: flex; gap: 0.35rem; }
+.typing-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #717576; animation: typingAnimation 1.4s infinite ease-in-out;
+}
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingAnimation {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+    30% { transform: translateY(-7px); opacity: 1; }
+}
+</style>
+"""
+
+st.markdown(css_light if THEME == "light" else css_dark, unsafe_allow_html=True)
 
 # --- System Prompt ---
 SYSTEM_PROMPT = {
@@ -242,7 +166,6 @@ if "chat_titles" not in st.session_state:
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
 
-# --- Helper Functions ---
 def should_rename(chat_key):
     if not chat_key.startswith("New Chat"):
         return False
@@ -267,7 +190,7 @@ def is_greeting(text):
 def show_typing_indicator():
     st.markdown("""
     <div class="typing-indicator">
-        <span style="color: #717576; font-weight: 600;">🤖 AI is typing</span>
+        <span style="font-weight:600;">🤖 AI is typing</span>
         <div class="typing-dots">
             <div class="typing-dot"></div>
             <div class="typing-dot"></div>
@@ -279,9 +202,9 @@ def show_typing_indicator():
 def truncate_title(title, max_length=32):
     return title if len(title) <= max_length else title[:max_length-3] + "..."
 
-# --- Sidebar: ChatGPT-like Chat List ---
+# --- Sidebar: Chat List ---
 with st.sidebar:
-    st.markdown('<div class="chatgpt-sidebar-title">💬 Conversations</div>', unsafe_allow_html=True)
+    st.markdown('### 💬 Chats')
     if st.button("➕ New Chat", key="new_chat", use_container_width=True):
         new_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
         st.session_state.all_chats[new_name] = [SYSTEM_PROMPT]
@@ -295,7 +218,7 @@ with st.sidebar:
             title = st.session_state.chat_titles.get(name, name)
             display_title = truncate_title(title)
             is_active = name == st.session_state.active_chat
-            btn_class = "chatgpt-sidebar-btn-active" if is_active else "chatgpt-sidebar-btn"
+            btn_style = "font-weight:700;" if is_active else ""
             if st.button(
                 display_title,
                 key=f"select_{name}",
@@ -315,12 +238,12 @@ with st.sidebar:
                 st.rerun()
     st.markdown("<hr>", unsafe_allow_html=True)
 
-# --- Main ChatGPT-like Chat Interface ---
+# --- Main UI ---
 chat_key = st.session_state.active_chat
 chat = st.session_state.all_chats.get(chat_key, [SYSTEM_PROMPT])
 title = st.session_state.chat_titles.get(chat_key, chat_key)
 
-st.markdown(f'<div class="chatgpt-header">HireScope Chat</div>', unsafe_allow_html=True)
+st.markdown('<div class="chatgpt-header">HireScope Chat</div>', unsafe_allow_html=True)
 st.markdown('<div class="chatgpt-container">', unsafe_allow_html=True)
 
 if len(chat) <= 1:
@@ -328,36 +251,35 @@ if len(chat) <= 1:
 else:
     for idx, msg in enumerate(chat[1:]):
         role = msg["role"]
-        avatar = "🧑" if role == "user" else "🤖"
-        msg_class = f"chatgpt-message {role}"
-        row_class = f"chatgpt-message-row {role}"
+        # Use css.gg icons
+        avatar = '<i class="gg-bot"></i>' if role == "assistant" else '<i class="gg-profile"></i>'
+        msg_class = f"bubble {role}"
+        row_class = f"message-row {role}"
         st.markdown(f"""
         <div class="{row_class}">
-            <div class="chatgpt-avatar">{avatar}</div>
-            <div>
+            <div class="avatar {role}">{avatar}</div>
+            <div style="flex:1;">
                 <div class="{msg_class}">{msg["content"]}</div>
-                <div class="chatgpt-timestamp">{datetime.now().strftime('%H:%M')}</div>
+                <div class="timestamp">{datetime.now().strftime('%H:%M')}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
 if st.session_state.is_generating:
-    st.markdown('<div class="chatgpt-message-row assistant"><div class="chatgpt-avatar">🤖</div><div>', unsafe_allow_html=True)
+    st.markdown('<div class="message-row assistant"><div class="avatar assistant"><i class="gg-bot"></i></div><div>', unsafe_allow_html=True)
     show_typing_indicator()
     st.markdown('</div></div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Chat Input
 query = st.chat_input("Type your message here and hit Enter...", disabled=st.session_state.is_generating)
 
-# --- Handle User Query ---
 if query and not st.session_state.is_generating:
     st.session_state.is_generating = True
     chat.append({"role": "user", "content": query})
     if should_rename(chat_key):
         rename_chat(chat_key)
-    st.rerun()  # Show message + typing indicator instantly
+    st.rerun()
 
 if st.session_state.is_generating and chat[-1]["role"] == "user":
     user_msg = chat[-1]["content"]
