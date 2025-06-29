@@ -256,7 +256,7 @@ with st.sidebar:
         st.session_state.active_chat = new_name
         st.session_state.is_generating = False
         st.session_state.editing_title = None
-        st.experimental_rerun()
+        st.rerun()
     
     # Chat List
     if st.session_state.all_chats:
@@ -268,25 +268,45 @@ with st.sidebar:
             display_title = truncate_title(title)
             
             if name == st.session_state.active_chat:
-                st.markdown(f"**🔵 {display_title}**")
+                if st.session_state.editing_title == name:
+                    new_title = st.text_input("Rename chat:", value=title, key=f"rename_{name}")
+                    cols = st.columns(2)
+                    with cols[0]:
+                        if st.button("✅ Save", key=f"save_{name}"):
+                            st.session_state.chat_titles[name] = new_title
+                            st.session_state.editing_title = None
+                            st.rerun()
+                    with cols[1]:
+                        if st.button("❌ Cancel", key=f"cancel_{name}"):
+                            st.session_state.editing_title = None
+                            st.rerun()
+                else:
+                    # Display chat title with rename button
+                    cols = st.columns([1, 4])
+                    with cols[0]:
+                        if st.button("✏️", key=f"edit_{name}"):
+                            st.session_state.editing_title = name
+                            st.rerun()
+                    with cols[1]:
+                        st.markdown(f"**🔵 {display_title}**")
             else:
                 if st.button(display_title, key=f"select_{name}"):
                     st.session_state.active_chat = name
                     st.session_state.is_generating = False
                     st.session_state.editing_title = None
-                    st.experimental_rerun()
+                    st.rerun()
     
     # Delete Chat Button
     if len(st.session_state.all_chats) > 1:
         st.markdown("---")
         if st.button("🗑️ Delete Current Chat", key="delete_chat"):
             if st.session_state.active_chat in st.session_state.all_chats:
-                del st.session_state.chat_titles[st.session_state.active_chart]
+                del st.session_state.chat_titles[st.session_state.active_chat]
                 del st.session_state.all_chats[st.session_state.active_chat]
                 st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
                 st.session_state.is_generating = False
                 st.session_state.editing_title = None
-                st.experimental_rerun()
+                st.rerun()
     
     # Statistics
     st.markdown("---")
@@ -300,36 +320,13 @@ chat_key = st.session_state.active_chat
 chat = st.session_state.all_chats.get(chat_key, [SYSTEM_PROMPT])
 title = st.session_state.chat_titles.get(chat_key, chat_key)
 
-# Chat Header with Title Editing
+# Chat Header
 with st.container():
     st.markdown(f"""
     <div class="chat-header">
         <h2>💼 {title}</h2>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Title editing interface
-    if st.session_state.editing_title == chat_key:
-        new_title = st.text_input(
-            "Edit chat title:", 
-            value=title,
-            key="title_edit_input",
-            label_visibility="collapsed"
-        )
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("✅ Save"):
-                st.session_state.chat_titles[chat_key] = new_title
-                st.session_state.editing_title = None
-                st.experimental_rerun()
-        with col2:
-            if st.button("❌ Cancel"):
-                st.session_state.editing_title = None
-                st.experimental_rerun()
-    else:
-        if st.button("✏️ Rename Chat", key="rename_chat"):
-            st.session_state.editing_title = chat_key
-            st.experimental_rerun()
 
 # Display Chat Messages
 message_container = st.container()
@@ -415,7 +412,6 @@ if query and not st.session_state.is_generating:
                     # Generate response using found documents
                     context = "\n\n---\n\n".join(docs)
                     chat[0]["content"] = f"Answer ONLY from these résumé snippets:\n\n{context}"
-                    
                     try:
                         resp = openai.chat.completions.create(
                             model="gpt-4o",
@@ -448,7 +444,7 @@ if query and not st.session_state.is_generating:
     
     finally:
         st.session_state.is_generating = False
-        st.experimental_rerun()
+        st.rerun()
 
 # --- Footer ---
 st.markdown("---")
