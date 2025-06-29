@@ -15,178 +15,157 @@ st.set_page_config(
 # --- Custom CSS ---
 st.markdown("""
 <style>
-    /* Global Styles */
-    .main .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+/* General container padding */
+.main .block-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+/* Sidebar responsiveness */
+section[data-testid="stSidebar"] > div {
+    overflow-y: auto;
+    max-height: 85vh;
+    padding-top: 1rem;
+}
+
+/* Chat header */
+.chat-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.chat-header h2 {
+    color: var(--text-color);
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Chat messages */
+.stChatMessage {
+    margin-bottom: 1rem;
+}
+
+/* Buttons */
+.stButton > button {
+    width: 100%;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    background: var(--secondary-background-color);
+    color: var(--text-color);
+    border: 1px solid var(--primary-color);
+    transition: all 0.3s ease;
+}
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+/* New chat button */
+.new-chat-btn button {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+}
+
+/* Delete button */
+.delete-btn button {
+    background: #ff4b4b;
+    color: white;
+}
+
+/* Chat selection buttons */
+.chat-btn button {
+    background: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--secondary-color);
+    margin-bottom: 0.5rem;
+    text-align: left;
+    font-size: 0.9rem;
+}
+.chat-btn button:hover {
+    background: var(--secondary-background-color);
+    border-color: var(--primary-color);
+}
+
+/* Typing indicator */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--background-color);
+    border-radius: 12px;
+    margin-top: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    color: var(--text-color);
+}
+.typing-dots {
+    display: flex;
+    gap: 4px;
+    margin-left: 0.75rem;
+}
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-color);
+    animation: typingBlink 1.4s infinite ease-in-out;
+}
+.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+.typing-dots span:nth-child(3) { animation-delay: 0; }
+
+@keyframes typingBlink {
+    0%, 80%, 100% {
+        transform: scale(0.75);
+        opacity: 0.5;
     }
-    
-    /* Sidebar Styling */
-    .sidebar .sidebar-content {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    40% {
+        transform: scale(1);
+        opacity: 1;
     }
-    
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
-    
-    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
-        overflow-y: auto;
-        max-height: 85vh;
-        padding: 1rem 0;
-    }
-    
-    /* Chat Header */
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-color);
+    opacity: 0.7;
+    font-style: italic;
+}
+
+/* Errors & Success Alerts */
+.error-message {
+    background: rgba(255, 0, 0, 0.05);
+    border-left: 4px solid #ff4b4b;
+    padding: 1rem;
+    border-radius: 8px;
+}
+.success-message {
+    background: rgba(0, 200, 100, 0.05);
+    border-left: 4px solid #00c851;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
     .chat-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    .chat-header h2 {
-        color: white;
-        margin: 0;
-        font-weight: 600;
-        font-size: 1.5rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    /* Chat Messages */
-    .stChatMessage {
+        padding: 1rem;
         margin-bottom: 1rem;
     }
-    
-    /* Button Styling */
-    .stButton > button {
-        width: 100%;
-        border-radius: 8px;
-        border: none;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
+    .chat-header h2 {
+        font-size: 1.2rem;
     }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    /* New Chat Button */
-    .new-chat-btn button {
-        background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-        color: white;
-        font-weight: 600;
-    }
-    
-    /* Delete Button */
-    .delete-btn button {
-        background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-        color: white;
-        margin-top: 1rem;
-    }
-    
-    /* Chat Selection Buttons */
-    .chat-btn button {
-        background: white;
-        color: #333;
-        border: 2px solid #e0e0e0;
-        margin-bottom: 0.5rem;
-        text-align: left;
-        font-size: 0.9rem;
-    }
-    
-    .chat-btn button:hover {
-        border-color: #667eea;
-        background: #f8f9ff;
-    }
-    
-    /* Typing Animation */
-    .typing-indicator {
-        display: flex;
-        align-items: center;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 12px;
-        margin: 1rem 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .typing-dots {
-        display: flex;
-        gap: 4px;
-        margin-left: 0.5rem;
-    }
-    
-    .typing-dots span {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #667eea;
-        animation: typing 1.4s infinite ease-in-out;
-    }
-    
-    .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
-    .typing-dots span:nth-child(3) { animation-delay: 0s; }
-    
-    @keyframes typing {
-        0%, 80%, 100% {
-            transform: scale(0.8);
-            opacity: 0.5;
-        }
-        40% {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-    
-    /* Error Message */
-    .error-message {
-        background: #fee;
-        border: 1px solid #fcc;
-        border-radius: 8px;
-        padding: 1rem;
-        color: #c33;
-        margin: 1rem 0;
-    }
-    
-    /* Success Message */
-    .success-message {
-        background: #efe;
-        border: 1px solid #cfc;
-        border-radius: 8px;
-        padding: 1rem;
-        color: #3c3;
-        margin: 1rem 0;
-    }
-    
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 2rem;
-        color: #666;
-        font-style: italic;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .main .block-container {
-            padding: 0.5rem;
-        }
-        
-        .chat-header {
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .chat-header h2 {
-            font-size: 1.2rem;
-        }
-    }
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- Chat Context Prompt ---
 SYSTEM_PROMPT = {
