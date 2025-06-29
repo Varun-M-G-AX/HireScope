@@ -1,6 +1,32 @@
 import streamlit as st
 from datetime import datetime
 
+# --- Mock dependencies, replace with your actual implementations ---
+try:
+    from openai import OpenAI
+    from utils import collection  # Your database collection utility
+    openai_client = OpenAI()
+except ImportError:
+    # Mock implementations for demo purposes
+    class MockOpenAI:
+        class chat:
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    class MockResponse:
+                        def __init__(self):
+                            self.choices = [type('obj', (object,), {
+                                'message': type('obj', (object,), {
+                                    'content': "Mock response from OpenAI"
+                                })
+                            })]
+                    return MockResponse()
+    openai_client = MockOpenAI()
+    collection = type('obj', (object,), {
+        'count': lambda: 3,
+        'query': lambda **kwargs: {'documents': [["Sample resume data 1", "Sample resume data 2"]]}
+    })()
+
 # --- Page Configuration ---
 st.set_page_config(
     page_title="HireScope Chat",
@@ -8,26 +34,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Scoped CSS ---
+# --- Scoped CSS with hirescope-wrapper prefix ---
 SCOPED_CSS = """
 <link href='https://css.gg/css' rel='stylesheet'>
 <style>
 .hirescope-wrapper {
-    --primary-bg: #ffffff;
-    --secondary-bg: #f5f7fa;
-    --text-color: #1a1a1a;
-    --primary-color: #667eea;
-    --secondary-color: #764ba2;
-    --message-user-bg: #e1f5fe;
-    --message-assistant-bg: #f1f8e9;
-    --border-color: #e1e4e8;
-    --shadow-color: rgba(0,0,0,0.1);
-}
-
-.hirescope-wrapper {
-    background-color: var(--primary-bg);
-    color: var(--text-color);
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    --primary-bg: #181818;
+    --secondary-bg: #242424;
+    --text-color: #e2e2e1;
+    --primary-color: #717576;
+    --secondary-color: #e2e2e1;
+    --message-user-bg: #242424;
+    --message-assistant-bg: #e2e2e1;
+    --border-color: #717576;
+    --shadow-color: rgba(0,0,0,0.25);
 }
 
 .hirescope-wrapper section[data-testid="stSidebar"] {
@@ -41,12 +61,12 @@ SCOPED_CSS = """
     border-radius: 12px;
     margin-bottom: 1.5rem;
     box-shadow: 0 4px 15px var(--shadow-color);
-    color: white;
+    color: #181818;
 }
 
 .hirescope-wrapper .chat-header h2 {
     margin: 0;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.35rem;
     display: flex;
     align-items: center;
@@ -57,21 +77,27 @@ SCOPED_CSS = """
     padding: 0.75rem 1rem;
     border-radius: 12px;
     margin-bottom: 1rem;
-    max-width: 85%;
+    max-width: 80%;
     position: relative;
     transition: all 0.2s ease;
+    word-break: break-word;
+    font-size: 1rem;
 }
 
 .hirescope-wrapper .user-message {
     background-color: var(--message-user-bg);
     margin-left: auto;
     border-top-right-radius: 4px;
+    border: 1px solid var(--border-color);
+    color: #e2e2e1;
 }
 
 .hirescope-wrapper .assistant-message {
     background-color: var(--message-assistant-bg);
     margin-right: auto;
     border-top-left-radius: 4px;
+    border: 1px solid var(--border-color);
+    color: #181818;
 }
 
 .hirescope-wrapper .message-timestamp {
@@ -92,7 +118,7 @@ SCOPED_CSS = """
     margin-left: 0.5rem;
     margin-bottom: 1rem;
     box-shadow: 0 2px 8px var(--shadow-color);
-    font-size: 0.85rem;
+    font-size: 0.95rem;
 }
 
 .hirescope-wrapper .typing-dots {
@@ -124,7 +150,7 @@ SCOPED_CSS = """
     padding: 0.5rem 1rem;
     font-weight: 500;
     background: var(--primary-color);
-    color: white;
+    color: #e2e2e1;
     border: none;
     transition: all 0.25s ease;
     display: flex;
@@ -142,7 +168,6 @@ SCOPED_CSS = """
     background: #ff4b4b !important;
 }
 
-/* Chat List */
 .hirescope-wrapper .chat-item {
     padding: 0.5rem;
     border-radius: 8px;
@@ -155,14 +180,13 @@ SCOPED_CSS = """
 }
 
 .hirescope-wrapper .chat-item:hover {
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(113,117,118, 0.1);
 }
 
 .hirescope-wrapper .chat-item.active {
-    background: rgba(102, 126, 234, 0.2);
+    background: rgba(113,117,118, 0.2);
 }
 
-/* Empty State */
 .hirescope-wrapper .empty-state {
     text-align: center;
     padding: 2rem;
@@ -171,7 +195,6 @@ SCOPED_CSS = """
     font-style: italic;
 }
 
-/* Utility Classes */
 .hirescope-wrapper .flex {
     display: flex;
     align-items: center;
@@ -185,42 +208,42 @@ SCOPED_CSS = """
     background: var(--secondary-bg);
     color: var(--text-color);
 }
+
+body {
+    background-color: #181818 !important;
+}
 </style>
 """
 
-# Inject scoped CSS
 st.markdown(SCOPED_CSS, unsafe_allow_html=True)
 
 # --- Session State Management ---
-class SessionState:
-    @staticmethod
-    def initialize():
-        if "all_chats" not in st.session_state:
-            st.session_state.all_chats = {}
-        if "active_chat" not in st.session_state:
-            SessionState.new_chat()
-        if "chat_titles" not in st.session_state:
-            st.session_state.chat_titles = {k: k for k in st.session_state.all_chats}
-        if "is_generating" not in st.session_state:
-            st.session_state.is_generating = False
-        if "editing_title" not in st.session_state:
-            st.session_state.editing_title = None
-        if "show_delete_confirm" not in st.session_state:
-            st.session_state.show_delete_confirm = False
-    
-    @staticmethod
-    def new_chat():
-        new_title = f"New Chat - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        st.session_state.all_chats[new_title] = [{
-            "role": "system",
-            "content": (
-                "You are a recruiting assistant. Answer ONLY from résumé snippets provided in context. "
-                "If the query is unrelated to résumés, say you can only answer resume-related questions."
-            )
-        }]
-        st.session_state.active_chat = new_title
+def initialize_state():
+    if "all_chats" not in st.session_state:
+        st.session_state.all_chats = {}
+    if "active_chat" not in st.session_state:
+        new_chat()
+    if "chat_titles" not in st.session_state:
+        st.session_state.chat_titles = {k: k for k in st.session_state.all_chats}
+    if "is_generating" not in st.session_state:
+        st.session_state.is_generating = False
+    if "editing_title" not in st.session_state:
+        st.session_state.editing_title = None
+    if "show_delete_confirm" not in st.session_state:
+        st.session_state.show_delete_confirm = False
 
-SessionState.initialize()
+def new_chat():
+    new_title = f"New Chat - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    st.session_state.all_chats[new_title] = [{
+        "role": "system",
+        "content": (
+            "You are a recruiting assistant. Answer ONLY from résumé snippets provided in context. "
+            "If the query is unrelated to résumés, say you can only answer resume-related questions."
+        )
+    }]
+    st.session_state.active_chat = new_title
+
+initialize_state()
 
 # --- Helper Functions ---
 def show_typing_indicator():
@@ -243,8 +266,7 @@ def generate_chat_title(messages):
         user_msgs = [m["content"] for m in messages if m["role"] == "user"][:3]
         if not user_msgs:
             return f"Chat - {datetime.now().strftime('%Y-%m-%d')}"
-        
-        response = openai.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{
                 "role": "user",
@@ -255,7 +277,7 @@ def generate_chat_title(messages):
         )
         title = response.choices[0].message.content.strip('"\'').strip()
         return title[:40]
-    except:
+    except Exception:
         return f"Chat - {datetime.now().strftime('%Y-%m-%d')}"
 
 # --- UI Components ---
@@ -267,22 +289,17 @@ def render_sidebar():
             <h3>HireScope Chat</h3>
         </div>
         """, unsafe_allow_html=True)
-        
         if st.button("➕ New Chat", key="new_chat", use_container_width=True):
-            SessionState.new_chat()
+            new_chat()
             st.session_state.is_generating = False
             st.session_state.editing_title = None
             st.rerun()
-        
         st.markdown("---")
-        
         if st.session_state.all_chats:
             sorted_chats = sorted(st.session_state.all_chats.keys(), reverse=True)
-            
             for name in sorted_chats:
                 title = st.session_state.chat_titles.get(name, name)
                 display = title[:25] + "..." if len(title) > 28 else title
-                
                 if name == st.session_state.active_chat:
                     st.markdown(f"**{display}**")
                 else:
@@ -293,13 +310,10 @@ def render_sidebar():
                     ):
                         st.session_state.active_chat = name
                         st.rerun()
-        
         st.markdown("---")
-        
         if len(st.session_state.all_chats) > 1:
             if st.button("🗑️ Delete Current Chat", key="delete_chat", use_container_width=True):
                 st.session_state.show_delete_confirm = True
-            
             if st.session_state.show_delete_confirm:
                 st.warning("Confirm deletion?")
                 col1, col2 = st.columns(2)
@@ -319,8 +333,6 @@ def render_sidebar():
 def render_chat_interface():
     chat = st.session_state.all_chats.get(st.session_state.active_chat, [])
     title = st.session_state.chat_titles.get(st.session_state.active_chat, "New Chat")
-    
-    # Chat Header
     col1, col2 = st.columns([0.9, 0.1])
     with col1:
         st.markdown(f"""
@@ -331,13 +343,10 @@ def render_chat_interface():
             </h2>
         </div>
         """, unsafe_allow_html=True)
-    
     with col2:
         if st.button("✏️", help="Rename chat"):
             st.session_state.editing_title = st.session_state.active_chat
             st.rerun()
-    
-    # Title Editor
     if st.session_state.editing_title == st.session_state.active_chat:
         new_title = st.text_input(
             "Edit chat title:", 
@@ -355,8 +364,6 @@ def render_chat_interface():
             if st.button("❌ Cancel", use_container_width=True):
                 st.session_state.editing_title = None
                 st.rerun()
-    
-    # Messages
     if len(chat) <= 1:  # Only system message
         st.markdown("""
         <div class="empty-state">
@@ -366,7 +373,7 @@ def render_chat_interface():
         </div>
         """, unsafe_allow_html=True)
     else:
-        for msg in chat[1:]:  # Skip system message
+        for msg in chat[1:]:
             if msg["role"] == "user":
                 st.markdown(f"""
                 <div class="chat-message user-message">
@@ -389,18 +396,14 @@ def render_chat_interface():
                     {format_timestamp()}
                 </div>
                 """, unsafe_allow_html=True)
-    
-    # Typing indicator
     if st.session_state.is_generating:
-        with st.chat_message("assistant"):
-            st.markdown(show_typing_indicator(), unsafe_allow_html=True)
+        st.markdown(show_typing_indicator(), unsafe_allow_html=True)
 
 # --- Main App ---
 st.markdown("<div class='hirescope-wrapper'>", unsafe_allow_html=True)
 render_sidebar()
 render_chat_interface()
 
-# Chat input
 query = st.chat_input(
     "Ask about candidates...", 
     disabled=st.session_state.is_generating,
@@ -410,46 +413,34 @@ query = st.chat_input(
 if query and not st.session_state.is_generating:
     st.session_state.is_generating = True
     chat = st.session_state.all_chats[st.session_state.active_chat]
-    
-    # Add user message
     chat.append({"role": "user", "content": query})
-    
-    # Auto-rename chat if needed
     if st.session_state.active_chat.startswith("New Chat"):
         new_title = generate_chat_title(chat)
         st.session_state.chat_titles[st.session_state.active_chat] = new_title
-    
-    # Process response
     try:
         if any(word in query.lower() for word in ["hi", "hello", "hey"]):
             reply = "Hello! How can I help with your recruiting needs today?"
         else:
-            # Check for resume data
             total = collection.count()
             if total == 0:
                 reply = "No resume data available. Please load candidate data first."
             else:
-                # Get relevant resumes
                 docs = collection.query(
                     query_texts=[query], 
                     n_results=min(3, total)
                 ).get("documents", [[]])[0]
-                
                 if not docs or all(not d.strip() for d in docs):
                     reply = "No matching resumes found. Try different search terms."
                 else:
-                    # Get AI response
                     context = "Context:\n" + "\n---\n".join(docs)
                     chat[0]["content"] = context
-                    
-                    response = openai.chat.completions.create(
+                    response = openai_client.chat.completions.create(
                         model="gpt-4",
                         messages=chat,
                         temperature=0.3,
                         max_tokens=500
                     )
                     reply = response.choices[0].message.content
-        
         chat.append({"role": "assistant", "content": reply})
     except Exception as e:
         chat.append({"role": "assistant", "content": f"Error: {str(e)}"})
@@ -457,7 +448,6 @@ if query and not st.session_state.is_generating:
         st.session_state.is_generating = False
         st.rerun()
 
-# Footer
 st.markdown("""
 <div class="footer">
     <div class="flex" style="justify-content: center;">
@@ -466,5 +456,4 @@ st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)  # Close hirescope-wrapper
+st.markdown("</div>", unsafe_allow_html=True)
