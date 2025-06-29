@@ -11,22 +11,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Bootstrap Icons SVG (inline for fast load) ---
-BOT_AVATAR = """
+# --- SVG Avatars (Bootstrap Icons, theme aware) ---
+ROBOT_SVG = """
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
-class="bi bi-robot" viewBox="0 0 16 16"><path d="M6 0a.5.5 0 0 1 .5.5V2h3V.5a.5.5 0 1 1 1 0V2h.25A2.75 2.75 0 0 1 13.5 4.75v.3A3.5 3.5 0 0 1 14 9v1.5A3.5 3.5 0 0 1 10.5 14h-5A3.5 3.5 0 0 1 2 10.5V9a3.5 3.5 0 0 1 .5-3.95v-.3A2.75 2.75 0 0 1 4.75 2H5.5V.5A.5.5 0 0 1 6 0Zm6.5 9a2.5 2.5 0 0 0-5 0h5Zm-6.5 2.5A2.5 2.5 0 0 1 8 14a2.5 2.5 0 0 1-2.5-2.5Zm-1-2.5a2.5 2.5 0 0 0 5 0h-5ZM4.75 3A1.75 1.75 0 0 0 3 4.75v.3a3.5 3.5 0 0 1 1.01 6.22c.02.09.03.17.03.26v1.5A2.5 2.5 0 0 0 5.5 13.5h5A2.5 2.5 0 0 0 13 11.5v-1.5a.5.5 0 0 1 .03-.26A3.5 3.5 0 0 1 13 5.05v-.3A1.75 1.75 0 0 0 11.25 3h-6.5ZM4.5 7a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Zm8 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z"/></svg>
+class="bi bi-robot" viewBox="0 0 16 16">
+  <path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5M3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.6 26.6 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.93.93 0 0 1-.765.935c-.845.147-2.34.346-4.235.346s-3.39-.2-4.235-.346A.93.93 0 0 1 3 9.219zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a25 25 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25 25 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135"/>
+  <path d="M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2zM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5"/>
+</svg>
 """
-
-USER_AVATAR = """
+HUMAN_SVG = """
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
-class="bi bi-person-circle" viewBox="0 0 16 16">
-  <path d="M13.468 12.37C12.758 11.226 11.482 10.5 10 10.5h-4c-1.482 0-2.758.726-3.468 1.87A6.978 6.978 0 0 0 8 15a6.978 6.978 0 0 0 5.468-2.63z"/>
-  <path fill-rule="evenodd" d="M8 9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm0 1a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/>
-  <path fill-rule="evenodd" d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 1a6 6 0 1 1 0 12A6 6 0 0 1 8 2z"/>
+class="bi bi-person-square" viewBox="0 0 16 16">
+  <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+  <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1v-1c0-1-1-4-6-4s-6 3-6 4v1a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
 </svg>
 """
 
-# --- CSS Styling using Streamlit theme variables ---
+# --- CSS Styling: Theme-adaptive using Streamlit variables ---
 st.markdown("""
 <style>
 body { background: var(--background-color) !important; }
@@ -53,6 +54,7 @@ body { background: var(--background-color) !important; }
 }
 .avatar.bot { background: var(--secondary-background-color, #717576); }
 .avatar.user { background: var(--secondary-background-color, #e2e2e1); }
+.avatar svg { display: block; margin: auto; }
 .bubble {
     border-radius: 1.08rem; box-shadow: 0 2px 12px #0001;
     padding: 1.15rem 1.35rem; font-size: 1.11rem; line-height: 1.7;
@@ -60,6 +62,7 @@ body { background: var(--background-color) !important; }
     border: 1.4px solid var(--secondary-background-color, #e2e2e1);
     background: var(--secondary-background-color, #e2e2e1);
     color: var(--text-color, #181818);
+    word-break: break-word;
 }
 .bubble.user {
     background: var(--primary-color, #242424);
@@ -173,7 +176,6 @@ with st.sidebar:
             title = st.session_state.chat_titles.get(name, name)
             display_title = truncate_title(title)
             is_active = name == st.session_state.active_chat
-            btn_style = "font-weight:700;" if is_active else ""
             if st.button(
                 display_title,
                 key=f"select_{name}",
@@ -206,7 +208,7 @@ if len(chat) <= 1:
 else:
     for idx, msg in enumerate(chat[1:]):
         role = msg["role"]
-        avatar = BOT_AVATAR if role == "assistant" else USER_AVATAR
+        avatar = ROBOT_SVG if role == "assistant" else HUMAN_SVG
         msg_class = f"bubble {role}"
         row_class = f"message-row {role}"
         st.markdown(f"""
@@ -220,7 +222,7 @@ else:
         """, unsafe_allow_html=True)
 
 if st.session_state.is_generating:
-    st.markdown(f'<div class="message-row assistant"><div class="avatar assistant">{BOT_AVATAR}</div><div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="message-row assistant"><div class="avatar assistant">{ROBOT_SVG}</div><div>', unsafe_allow_html=True)
     show_typing_indicator()
     st.markdown('</div></div>', unsafe_allow_html=True)
 
@@ -239,7 +241,7 @@ if st.session_state.is_generating and chat[-1]["role"] == "user":
     user_msg = chat[-1]["content"]
     try:
         if is_greeting(user_msg):
-            reply = "Hello! 👋 I'm here to help you find information about candidates. How can I assist you today?"
+            reply = "Hello! How can I assist you today?"
         else:
             try:
                 total = collection.count()
@@ -251,7 +253,7 @@ if st.session_state.is_generating and chat[-1]["role"] == "user":
             else:
                 try:
                     hits = collection.query(
-                        query_texts=[user_msg], 
+                        query_texts=[user_msg],
                         n_results=max(1, min(5, total))
                     )
                     docs = hits.get("documents", [[]])[0]
