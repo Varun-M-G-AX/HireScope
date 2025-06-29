@@ -1,31 +1,5 @@
-import re
 import streamlit as st
 from datetime import datetime
-from typing import Dict, List
-
-# Mock dependencies - replace with your actual implementations
-try:
-    from openai import OpenAI
-    from utils import collection  # Your database collection utility
-except ImportError:
-    # Mock implementations for demo purposes
-    class MockOpenAI:
-        class chat:
-            class completions:
-                def create(**kwargs):
-                    class MockResponse:
-                        def __init__(self):
-                            self.choices = [type('obj', (object,), {
-                                'message': type('obj', (object,), {
-                                    'content': "Mock response from OpenAI"
-                                })
-                            })]
-                    return MockResponse()
-    openai = MockOpenAI()
-    collection = type('obj', (object,), {
-        'count': lambda: 3,
-        'query': lambda **kwargs: {'documents': [["Sample resume data 1", "Sample resume data 2"]]}
-    })()
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -34,7 +8,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Scoped CSS with hirescope-wrapper prefix ---
+# --- Scoped CSS ---
 SCOPED_CSS = """
 <link href='https://css.gg/css' rel='stylesheet'>
 <style>
@@ -50,21 +24,6 @@ SCOPED_CSS = """
     --shadow-color: rgba(0,0,0,0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-    .hirescope-wrapper {
-        --primary-bg: #1e1e1e;
-        --secondary-bg: #2d2d2d;
-        --text-color: #f0f0f0;
-        --primary-color: #7c93ff;
-        --secondary-color: #9a6bff;
-        --message-user-bg: #2a3a45;
-        --message-assistant-bg: #2a3d35;
-        --border-color: #3a3a3a;
-        --shadow-color: rgba(0,0,0,0.3);
-    }
-}
-
-/* Scoped styles */
 .hirescope-wrapper {
     background-color: var(--primary-bg);
     color: var(--text-color);
