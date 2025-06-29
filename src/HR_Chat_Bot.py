@@ -15,17 +15,19 @@ st.set_page_config(
 # --- Custom CSS ---
 st.markdown("""
 <style>
-/* General container padding */
+/* General styling */
 .main .block-container {
     padding-top: 1rem;
     padding-bottom: 1rem;
 }
-/* Sidebar responsiveness */
+
+/* Sidebar styling */
 section[data-testid="stSidebar"] > div {
     overflow-y: auto;
     max-height: 85vh;
     padding-top: 1rem;
 }
+
 /* Chat header */
 .chat-header {
     background: linear-gradient(135deg, #667eea, #764ba2);
@@ -40,6 +42,7 @@ section[data-testid="stSidebar"] > div {
     font-weight: 600;
     font-size: 1.5rem;
 }
+
 /* Chat messages */
 .chat-message {
     padding: 0.75rem;
@@ -55,6 +58,20 @@ section[data-testid="stSidebar"] > div {
     background-color: #f1f8e9;
     align-self: flex-start;
 }
+
+/* Chat title editing */
+.chat-title-edit {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.chat-title-edit input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
 /* Buttons */
 .stButton > button {
     width: 100%;
@@ -70,6 +87,7 @@ section[data-testid="stSidebar"] > div {
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(0,0,0,0.1);
 }
+
 /* Typing indicator */
 .typing-indicator {
     display: flex;
@@ -81,6 +99,7 @@ section[data-testid="stSidebar"] > div {
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     color: #666;
 }
+
 /* Empty state */
 .empty-state {
     text-align: center;
@@ -88,19 +107,7 @@ section[data-testid="stSidebar"] > div {
     color: #666;
     font-style: italic;
 }
-/* Errors & Success Alerts */
-.error-message {
-    background: rgba(255, 0, 0, 0.05);
-    border-left: 4px solid #ff4b4b;
-    padding: 1rem;
-    border-radius: 8px;
-}
-.success-message {
-    background: rgba(0, 200, 100, 0.05);
-    border-left: 4px solid #00c851;
-    padding: 1rem;
-    border-radius: 8px;
-}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .chat-header {
@@ -136,6 +143,56 @@ if "chat_titles" not in st.session_state:
     st.session_state.chat_titles = {k: k for k in st.session_state.all_chats}
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
+if "editing_title" not in st.session_state:
+    st.session_state.editing_title = None
+
+# --- Helper Functions ---
+def generate_chat_title(messages):
+    """Generate a descriptive title for the chat using AI"""
+    try:
+        # Get the first few user messages
+        user_messages = [m["content"] for m in messages if m["role"] == "user"][:3]
+        if not user_messages:
+            return f"Chat - {datetime.now():%Y-%m-%d}"
+        
+        # Create prompt for title generation
+        prompt = (
+            "Generate a concise, descriptive title (3-5 words) for this chat conversation "
+            "based on the following initial messages. The title should capture the main topic "
+            "of discussion. Respond ONLY with the title, no other text.\n\n"
+            "Messages:\n" + "\n".join(f"- {msg}" for msg in user_messages)
+        )
+        
+        # Call OpenAI API
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=20
+        )
+        
+        title = response.choices[0].message.content.strip()
+        # Clean up the title
+        title = re.sub(r'^["\']|["\']$', "", title)  # Remove surrounding quotes if any
+        return title[:40]  # Truncate to 40 chars
+        
+    except Exception as e:
+        st.error(f"Error generating chat title: {e}")
+        return f"Chat - {datetime.now():%Y-%m-%d}"
+
+def should_rename(chat_key):
+    """Determine if a chat should be auto-renamed"""
+    if not chat_key.startswith("New Chat"):
+        return False
+    chat = st.session_state.all_chats[chat_key]
+    user_msgs = [m for m in chat if m["role"] == "user"]
+    return len(user_msgs) >= 2  # Rename after at least 2 user messages
+
+def truncate_title(title, max_length=30):
+    """Truncate chat title for display"""
+    if len(title) <= max_length:
+        return title
+    return title[:max_length-3] + "..."
 
 # --- Sidebar: Chat Management ---
 with st.sidebar:
@@ -148,6 +205,7 @@ with st.sidebar:
         st.session_state.chat_titles[new_name] = new_name
         st.session_state.active_chat = new_name
         st.session_state.is_generating = False
+        st.session_state.editing_title = None
         st.experimental_rerun()
     
     # Chat List
@@ -157,12 +215,15 @@ with st.sidebar:
         
         for name in sorted_chats:
             title = st.session_state.chat_titles.get(name, name)
+            display_title = truncate_title(title)
+            
             if name == st.session_state.active_chat:
-                st.markdown(f"**🔵 {title}**")
+                st.markdown(f"**🔵 {display_title}**")
             else:
-                if st.button(title, key=f"select_{name}"):
+                if st.button(display_title, key=f"select_{name}"):
                     st.session_state.active_chat = name
                     st.session_state.is_generating = False
+                    st.session_state.editing_title = None
                     st.experimental_rerun()
     
     # Delete Chat Button
@@ -174,6 +235,7 @@ with st.sidebar:
                 del st.session_state.all_chats[st.session_state.active_chat]
                 st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
                 st.session_state.is_generating = False
+                st.session_state.editing_title = None
                 st.experimental_rerun()
     
     # Statistics
@@ -188,12 +250,36 @@ chat_key = st.session_state.active_chat
 chat = st.session_state.all_chats.get(chat_key, [SYSTEM_PROMPT])
 title = st.session_state.chat_titles.get(chat_key, chat_key)
 
-# Chat Header
-st.markdown(f"""
-<div class="chat-header">
-    <h2>💼 {title}</h2>
-</div>
-""", unsafe_allow_html=True)
+# Chat Header with Title Editing
+with st.container():
+    st.markdown(f"""
+    <div class="chat-header">
+        <h2>💼 {title}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Title editing interface
+    if st.session_state.editing_title == chat_key:
+        new_title = st.text_input(
+            "Edit chat title:", 
+            value=title,
+            key="title_edit_input",
+            label_visibility="collapsed"
+        )
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("✅ Save"):
+                st.session_state.chat_titles[chat_key] = new_title
+                st.session_state.editing_title = None
+                st.experimental_rerun()
+        with col2:
+            if st.button("❌ Cancel"):
+                st.session_state.editing_title = None
+                st.experimental_rerun()
+    else:
+        if st.button("✏️ Rename Chat", key="rename_chat"):
+            st.session_state.editing_title = chat_key
+            st.experimental_rerun()
 
 # Display Chat Messages
 message_container = st.container()
@@ -293,6 +379,11 @@ if query and not st.session_state.is_generating:
         
         # Add assistant response
         chat.append({"role": "assistant", "content": reply})
+        
+        # Auto-rename chat if needed
+        if should_rename(chat_key):
+            new_title = generate_chat_title(chat)
+            st.session_state.chat_titles[chat_key] = new_title
         
         # Clear typing indicator and show response
         typing_placeholder.empty()
