@@ -1,7 +1,6 @@
 import re
 import streamlit as st
 from datetime import datetime
-import time
 from utils import collection, openai
 
 # --- Page Configuration ---
@@ -528,75 +527,3 @@ if query and not st.session_state.is_generating:
             
             if total == 0:
                 reply = "I don't have any résumé data available right now. Please make sure the candidate database is properly loaded."
-            else:
-                # Search for relevant documents
-                try:
-                    hits = collection.query(
-                        query_texts=[query], 
-                        n_results=max(1, min(5, total))
-                    )
-                    docs = hits.get("documents", [[]])[0]
-                except Exception as e:
-                    st.error(f"Search error: {e}")
-                    docs = []
-                
-                if not docs or all(not d.strip() for d in docs):
-                    reply = "I couldn't find any matching résumé information. Try rephrasing your question."
-                else:
-                    context = "\n\n---\n\n".join(docs)
-                    chat[0]["content"] = f"Answer ONLY from these résumé snippets:\n\n{context}"
-                    
-                    try:
-                        resp = openai.chat.completions.create(
-                            model="gpt-4o",
-                            messages=chat,
-                            temperature=0.3,
-                            max_tokens=1000
-                        )
-                        reply = resp.choices[0].message.content.strip()
-                    except Exception as e:
-                        reply = f"⚠️ Error generating response: {str(e)}"
-        
-        # Add assistant response
-        chat.append({"role": "assistant", "content": reply})
-        
-        # Auto-rename chat if needed
-        if should_rename(chat_key):
-            new_title = generate_chat_title(chat)
-            st.session_state.chat_titles[chat_key] = new_title
-        
-        # Show response
-        typing_placeholder.empty()
-        with st.container():
-            st.markdown(
-                f'<div class="chat-message assistant-message">'
-                f'<div class="flex">'
-                f'<i class="gg-bot"></i>'
-                f'<span style="font-weight:500;">HireScope AI</span>'
-                f'</div>'
-                f'<div>{reply}</div>'
-                f'{format_message_timestamp()}'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-        
-    except Exception as e:
-        typing_placeholder.empty()
-        error_msg = f"An error occurred: {str(e)}"
-        chat.append({"role": "assistant", "content": error_msg})
-        st.error(error_msg)
-    
-    finally:
-        st.session_state.is_generating = False
-        st.rerun()
-
-# --- Footer ---
-st.markdown("---")
-st.markdown("""
-<div class="footer">
-    <div class="flex" style="justify-content: center; gap: 0.75rem;">
-        <i class="gg-terminal"></i>
-        <span>HireScope AI - Candidate Search Assistant</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
