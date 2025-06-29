@@ -12,10 +12,24 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Custom CSS for ChatGPT-like UI ---
+# --- Custom CSS for ChatGPT-like UI, with dark/light support ---
 st.markdown("""
 <style>
 :root {
+    --primary-bg: #f3f3f3;
+    --secondary-bg: #e2e2e1;
+    --user-message-bg: #e2e2e1;
+    --assistant-message-bg: #717576;
+    --assistant-message-color: #fff;
+    --user-message-color: #242424;
+    --border-color: #717576;
+    --sidebar-bg: #e2e2e1;
+    --sidebar-color: #242424;
+    --primary-color: #717576;
+    --shadow: 0 4px 20px 0 rgba(0,0,0,.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
     --primary-bg: #181818;
     --secondary-bg: #242424;
     --user-message-bg: #242424;
@@ -27,6 +41,7 @@ st.markdown("""
     --sidebar-color: #e2e2e1;
     --primary-color: #717576;
     --shadow: 0 4px 20px 0 rgba(0,0,0,.15);
+  }
 }
 body {
     background: var(--primary-bg) !important;
@@ -229,7 +244,6 @@ if "is_generating" not in st.session_state:
 
 # --- Helper Functions ---
 def should_rename(chat_key):
-    # Auto-rename if first non-greet user message is present and chat is default
     if not chat_key.startswith("New Chat"):
         return False
     chat = st.session_state.all_chats[chat_key]
@@ -268,7 +282,6 @@ def truncate_title(title, max_length=32):
 # --- Sidebar: ChatGPT-like Chat List ---
 with st.sidebar:
     st.markdown('<div class="chatgpt-sidebar-title">💬 Conversations</div>', unsafe_allow_html=True)
-    # New Chat Button
     if st.button("➕ New Chat", key="new_chat", use_container_width=True):
         new_name = f"New Chat - {datetime.now():%Y-%m-%d %H:%M}"
         st.session_state.all_chats[new_name] = [SYSTEM_PROMPT]
@@ -276,7 +289,6 @@ with st.sidebar:
         st.session_state.active_chat = new_name
         st.session_state.is_generating = False
         st.rerun()
-    # List chats
     if st.session_state.all_chats:
         sorted_chats = sorted(st.session_state.all_chats.keys(), reverse=True)
         for name in sorted_chats:
@@ -293,7 +305,6 @@ with st.sidebar:
                 st.session_state.active_chat = name
                 st.session_state.is_generating = False
                 st.rerun()
-    # Delete Chat Button
     if len(st.session_state.all_chats) > 1:
         if st.button("🗑️ Delete Current Chat", key="delete_chat", use_container_width=True):
             if st.session_state.active_chat in st.session_state.all_chats:
@@ -312,11 +323,10 @@ title = st.session_state.chat_titles.get(chat_key, chat_key)
 st.markdown(f'<div class="chatgpt-header">HireScope Chat</div>', unsafe_allow_html=True)
 st.markdown('<div class="chatgpt-container">', unsafe_allow_html=True)
 
-# Display Chat Messages
 if len(chat) <= 1:
     st.markdown('<div class="chatgpt-empty">👋 Start a conversation about candidates or résumés.<br><br><em>Example: "Show me Python developers" or "Who has 5+ years of project management?"</em></div>', unsafe_allow_html=True)
 else:
-    for idx, msg in enumerate(chat[1:]):  # skip system prompt
+    for idx, msg in enumerate(chat[1:]):
         role = msg["role"]
         avatar = "🧑" if role == "user" else "🤖"
         msg_class = f"chatgpt-message {role}"
@@ -331,7 +341,6 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-# Typing indicator
 if st.session_state.is_generating:
     st.markdown('<div class="chatgpt-message-row assistant"><div class="chatgpt-avatar">🤖</div><div>', unsafe_allow_html=True)
     show_typing_indicator()
@@ -346,14 +355,9 @@ query = st.chat_input("Type your message here and hit Enter...", disabled=st.ses
 if query and not st.session_state.is_generating:
     st.session_state.is_generating = True
     chat.append({"role": "user", "content": query})
-    # Auto-rename chat if needed
     if should_rename(chat_key):
         rename_chat(chat_key)
-    # Show user message immediately
-    st.experimental_rerun()  # Show message + typing indicator instantly
-    # Now process the query "in the background" (Streamlit rerun)
-    # On next rerun, process the pending message and output
-    # This ensures the UI is responsive
+    st.rerun()  # Show message + typing indicator instantly
 
 if st.session_state.is_generating and chat[-1]["role"] == "user":
     user_msg = chat[-1]["content"]
@@ -399,9 +403,8 @@ if st.session_state.is_generating and chat[-1]["role"] == "user":
         chat.append({"role": "assistant", "content": error_msg})
     finally:
         st.session_state.is_generating = False
-        st.experimental_rerun()
+        st.rerun()
 
-# --- Footer ---
 st.markdown("""
 <div style="text-align: center; color: #bdbdbd; font-size: 0.98em; padding: 1.5rem 0 0 0;">
     <hr style="border-color: #313133;">
