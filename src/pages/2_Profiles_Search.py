@@ -109,11 +109,23 @@ for idx, (meta, doc) in enumerate(zip(metas, docs)):
                 else:
                     summary_str = doc
                 # Scrollable code/text area
-                st.markdown(
-                    f"<div style='max-height:300px;overflow:auto;background:#1e222d;padding:10px;border-radius:7px;border:1px solid #444;'>"
-                    f"<pre style='font-size: 0.93rem; color: #eee;'>{summary_str}</pre></div>",
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"""
+<div style="
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: var(--background-secondary);
+    color: var(--text-color);
+    border-radius: 8px;
+    border: 1px solid var(--secondary-background-color);
+    font-size: 0.88rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+">
+{summary_str}
+</div>
+""", unsafe_allow_html=True)
+
 
             # Delete confirmation
             if delete_candidate:
