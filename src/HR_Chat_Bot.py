@@ -24,6 +24,122 @@ st.markdown("""
 header[data-testid="stHeader"] {display: none;}
 .stMainBlockContainer {padding-top: 1rem;}
 
+/* Sidebar toggle button */
+.sidebar-toggle {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 999;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Skeleton loading animation */
+@keyframes skeleton-loading {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.skeleton {
+    display: inline-block;
+    height: 1em;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0.1) 25%, 
+        rgba(255, 255, 255, 0.2) 50%, 
+        rgba(255, 255, 255, 0.1) 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 0.25rem;
+}
+
+.skeleton-container {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0.75rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    background: rgba(40, 167, 69, 0.1);
+    border-left: 3px solid #28a745;
+}
+
+.skeleton-icon {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #28a745;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.skeleton-content {
+    flex: 1;
+    line-height: 1.6;
+}
+
+.skeleton-line {
+    margin: 0.5rem 0;
+}
+
+.skeleton-line:nth-child(1) { width: 90%; }
+.skeleton-line:nth-child(2) { width: 85%; }
+.skeleton-line:nth-child(3) { width: 70%; }
+.skeleton-line:nth-child(4) { width: 95%; }
+
+/* Thinking dots animation */
+.thinking-dots {
+    display: inline-flex;
+    gap: 0.25rem;
+    align-items: center;
+    margin-left: 0.5rem;
+}
+
+.thinking-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.4;
+    animation: thinking 1.4s infinite ease-in-out;
+}
+
+.thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+.thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+.thinking-dot:nth-child(3) { animation-delay: 0; }
+
+@keyframes thinking {
+    0%, 80%, 100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+}
+
 /* Sidebar styling */
 .stSidebar > div {
     padding-top: 1rem;
@@ -194,6 +310,18 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- Sidebar Toggle Function ---
+def toggle_sidebar():
+    """Toggle sidebar visibility"""
+    if hasattr(st.session_state, 'sidebar_open'):
+        st.session_state.sidebar_open = not st.session_state.sidebar_open
+    else:
+        st.session_state.sidebar_open = True
+
+# Initialize sidebar state
+if 'sidebar_open' not in st.session_state:
+    st.session_state.sidebar_open = True
+
 # --- Helper Functions ---
 def generate_chat_title(content):
     """Generate a short title from the first message"""
@@ -221,104 +349,128 @@ if "editing_chat" not in st.session_state:
 if "dropdown_open" not in st.session_state:
     st.session_state.dropdown_open = {}
 
+if "is_generating" not in st.session_state:
+    st.session_state.is_generating = False
+
+# --- Sidebar Toggle Button (when sidebar is collapsed) ---
+if not st.session_state.get('sidebar_open', True):
+    st.markdown(f"""
+    <div class="sidebar-toggle" onclick="document.getElementById('sidebar_toggle_btn').click()">
+        {ICONS['chat']}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Hidden button to trigger sidebar toggle
+    if st.button("", key="sidebar_toggle_btn", help="Open sidebar"):
+        st.session_state.sidebar_open = True
+        st.rerun()
+
 # --- Sidebar ---
-with st.sidebar:
-    st.markdown("### HireScope")
-    
-    # New Chat Button
-    new_chat_col = st.container()
-    with new_chat_col:
-        if st.button("New Chat", key="new_chat", help="Start a new conversation"):
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-            title = f"New Chat"
-            counter = 1
-            while title in st.session_state.chats:
-                title = f"New Chat {counter}"
-                counter += 1
-            
-            st.session_state.chats[title] = [{"role": "system", "content": "You are a recruiter assistant."}]
-            st.session_state.active = title
-            st.session_state.editing_chat = None
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Chat History
-    if st.session_state.chats:
-        st.markdown("**Recent Chats**")
+if st.session_state.get('sidebar_open', True):
+    with st.sidebar:
+        # Close sidebar button
+        col1, col2 = st.columns([0.8, 0.2])
+        with col1:
+            st.markdown("### HireScope")
+        with col2:
+            if st.button("✕", key="close_sidebar", help="Close sidebar"):
+                st.session_state.sidebar_open = False
+                st.rerun()
         
-        for chat_key in sorted(st.session_state.chats.keys(), reverse=True):
-            is_active = chat_key == st.session_state.active
-            is_editing = st.session_state.editing_chat == chat_key
+        # New Chat Button
+        new_chat_col = st.container()
+        with new_chat_col:
+            if st.button("New Chat", key="new_chat", help="Start a new conversation"):
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+                title = f"New Chat"
+                counter = 1
+                while title in st.session_state.chats:
+                    title = f"New Chat {counter}"
+                    counter += 1
+                
+                st.session_state.chats[title] = [{"role": "system", "content": "You are a recruiter assistant."}]
+                st.session_state.active = title
+                st.session_state.editing_chat = None
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # Chat History
+        if st.session_state.chats:
+            st.markdown("**Recent Chats**")
             
-            # Create container for each chat item
-            chat_container = st.container()
-            
-            with chat_container:
-                if is_editing:
-                    # Rename mode
-                    col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
-                    with col1:
-                        new_name = st.text_input(
-                            "", 
-                            value=chat_key, 
-                            key=f"rename_{chat_key}",
-                            label_visibility="collapsed"
-                        )
-                    with col2:
-                        if st.button("✓", key=f"confirm_{chat_key}", help="Confirm rename"):
-                            if new_name and new_name != chat_key and new_name not in st.session_state.chats:
-                                st.session_state.chats[new_name] = st.session_state.chats.pop(chat_key)
-                                if st.session_state.active == chat_key:
-                                    st.session_state.active = new_name
-                            st.session_state.editing_chat = None
-                            st.rerun()
-                    with col3:
-                        if st.button("✕", key=f"cancel_{chat_key}", help="Cancel rename"):
-                            st.session_state.editing_chat = None
-                            st.rerun()
-                else:
-                    # Normal mode
-                    col1, col2 = st.columns([0.85, 0.15])
-                    
-                    with col1:
-                        # Chat selection button
-                        button_style = "primary" if is_active else "secondary"
-                        if st.button(
-                            chat_key, 
-                            key=f"select_{chat_key}",
-                            help=f"Switch to {chat_key}",
-                            use_container_width=True
-                        ):
-                            st.session_state.active = chat_key
-                            st.session_state.editing_chat = None
-                            st.rerun()
-                    
-                    with col2:
-                        # Three dots menu
-                        if st.button("⋮", key=f"menu_{chat_key}", help="Chat options"):
-                            st.session_state.dropdown_open[chat_key] = not st.session_state.dropdown_open.get(chat_key, False)
-                            st.rerun()
-                    
-                    # Dropdown menu
-                    if st.session_state.dropdown_open.get(chat_key, False):
-                        with st.container():
-                            subcol1, subcol2 = st.columns(2)
-                            with subcol1:
-                                if st.button("📝", key=f"edit_{chat_key}", help="Rename chat"):
-                                    st.session_state.editing_chat = chat_key
-                                    st.session_state.dropdown_open[chat_key] = False
-                                    st.rerun()
-                            with subcol2:
-                                if st.button("🗑️", key=f"delete_{chat_key}", help="Delete chat"):
-                                    if len(st.session_state.chats) > 1:
-                                        del st.session_state.chats[chat_key]
-                                        if st.session_state.active == chat_key:
-                                            st.session_state.active = next(iter(st.session_state.chats))
-                                        st.session_state.dropdown_open.pop(chat_key, None)
-                                        if st.session_state.editing_chat == chat_key:
-                                            st.session_state.editing_chat = None
+            for chat_key in sorted(st.session_state.chats.keys(), reverse=True):
+                is_active = chat_key == st.session_state.active
+                is_editing = st.session_state.editing_chat == chat_key
+                
+                # Create container for each chat item
+                chat_container = st.container()
+                
+                with chat_container:
+                    if is_editing:
+                        # Rename mode
+                        col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
+                        with col1:
+                            new_name = st.text_input(
+                                "", 
+                                value=chat_key, 
+                                key=f"rename_{chat_key}",
+                                label_visibility="collapsed"
+                            )
+                        with col2:
+                            if st.button("✓", key=f"confirm_{chat_key}", help="Confirm rename"):
+                                if new_name and new_name != chat_key and new_name not in st.session_state.chats:
+                                    st.session_state.chats[new_name] = st.session_state.chats.pop(chat_key)
+                                    if st.session_state.active == chat_key:
+                                        st.session_state.active = new_name
+                                st.session_state.editing_chat = None
+                                st.rerun()
+                        with col3:
+                            if st.button("✕", key=f"cancel_{chat_key}", help="Cancel rename"):
+                                st.session_state.editing_chat = None
+                                st.rerun()
+                    else:
+                        # Normal mode
+                        col1, col2 = st.columns([0.85, 0.15])
+                        
+                        with col1:
+                            # Chat selection button
+                            button_style = "primary" if is_active else "secondary"
+                            if st.button(
+                                chat_key, 
+                                key=f"select_{chat_key}",
+                                help=f"Switch to {chat_key}",
+                                use_container_width=True
+                            ):
+                                st.session_state.active = chat_key
+                                st.session_state.editing_chat = None
+                                st.rerun()
+                        
+                        with col2:
+                            # Three dots menu
+                            if st.button("⋮", key=f"menu_{chat_key}", help="Chat options"):
+                                st.session_state.dropdown_open[chat_key] = not st.session_state.dropdown_open.get(chat_key, False)
+                                st.rerun()
+                        
+                        # Dropdown menu
+                        if st.session_state.dropdown_open.get(chat_key, False):
+                            with st.container():
+                                subcol1, subcol2 = st.columns(2)
+                                with subcol1:
+                                    if st.button("📝", key=f"edit_{chat_key}", help="Rename chat"):
+                                        st.session_state.editing_chat = chat_key
+                                        st.session_state.dropdown_open[chat_key] = False
                                         st.rerun()
+                                with subcol2:
+                                    if st.button("🗑️", key=f"delete_{chat_key}", help="Delete chat"):
+                                        if len(st.session_state.chats) > 1:
+                                            del st.session_state.chats[chat_key]
+                                            if st.session_state.active == chat_key:
+                                                st.session_state.active = next(iter(st.session_state.chats))
+                                            st.session_state.dropdown_open.pop(chat_key, None)
+                                            if st.session_state.editing_chat == chat_key:
+                                                st.session_state.editing_chat = None
+                                            st.rerun()
 
 # --- Main Chat Area ---
 st.title("💼 HireScope Chat")
@@ -363,6 +515,30 @@ with chat_container:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+    
+    # Show skeleton loading animation when generating response
+    if st.session_state.is_generating:
+        st.markdown(f"""
+        <div class="skeleton-container">
+            <div class="skeleton-icon">
+                {ICONS['robot']}
+            </div>
+            <div class="skeleton-content">
+                <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                    <strong>HireScope Assistant</strong>
+                    <div class="thinking-dots">
+                        <div class="thinking-dot"></div>
+                        <div class="thinking-dot"></div>
+                        <div class="thinking-dot"></div>
+                    </div>
+                </div>
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton skeleton-line"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Chat input
 prompt = st.chat_input("Ask about candidates, resumes, or hiring...")
@@ -371,6 +547,12 @@ if prompt:
     # Add user message
     chat.append({"role": "user", "content": prompt})
     
+    # Set generating state to show skeleton
+    st.session_state.is_generating = True
+    st.rerun()
+
+# Process response if we're in generating state
+if st.session_state.is_generating:
     # Generate response
     try:
         total = collection.count()
@@ -378,7 +560,7 @@ if prompt:
             reply = "⚠️ No resume data available. Please upload some resumes to get started."
         else:
             # Query the vector database
-            hits = collection.query(query_texts=[prompt], n_results=3)
+            hits = collection.query(query_texts=[chat[-1]["content"]], n_results=3)
             context = "\n---\n".join(hits.get("documents", [[]])[0])
             
             # Update system message with context
@@ -405,11 +587,13 @@ Be helpful, professional, and provide specific information from the resumes when
     
     # Update chat title if it's still default
     if active_key.startswith("New Chat") and len(chat) == 3:  # System + User + Assistant
-        new_title = generate_chat_title(prompt)
+        new_title = generate_chat_title(chat[-2]["content"])  # Use user message for title
         if new_title != active_key:
             st.session_state.chats[new_title] = st.session_state.chats.pop(active_key)
             st.session_state.active = new_title
     
+    # Reset generating state
+    st.session_state.is_generating = False
     st.rerun()
 
 # Footer
