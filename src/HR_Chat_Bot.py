@@ -88,16 +88,53 @@ section[data-testid="stSidebar"] > div {
     box-shadow: 0 3px 8px rgba(0,0,0,0.1);
 }
 
-/* Typing indicator */
-.typing-indicator {
+/* Enhanced Typing Indicator */
+.typing-indicator-container {
     display: flex;
     align-items: center;
-    padding: 0.75rem 1rem;
-    background: #f1f1f1;
-    border-radius: 12px;
-    margin-top: 1rem;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    color: #666;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #f3f4f6;
+    border-radius: 18px;
+    width: fit-content;
+    margin-left: 8px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.typing-indicator-text {
+    font-weight: 500;
+    color: #4b5563;
+    font-size: 14px;
+}
+.typing-animation {
+    display: flex;
+    gap: 4px;
+}
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #667eea;
+    animation: typingAnimation 1.4s infinite ease-in-out;
+}
+.typing-dot:nth-child(1) {
+    animation-delay: 0s;
+}
+.typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+.typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+@keyframes typingAnimation {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.6;
+    }
+    30% {
+        transform: translateY(-5px);
+        opacity: 1;
+    }
 }
 
 /* Empty state */
@@ -147,6 +184,19 @@ if "editing_title" not in st.session_state:
     st.session_state.editing_title = None
 
 # --- Helper Functions ---
+def show_typing_indicator():
+    """Display enhanced typing indicator with smooth animation"""
+    return """
+    <div class="typing-indicator-container">
+        <div class="typing-indicator-text">HireScope is thinking</div>
+        <div class="typing-animation">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+    </div>
+    """
+
 def generate_chat_title(messages):
     """Generate a descriptive title for the chat using AI"""
     try:
@@ -231,7 +281,7 @@ with st.sidebar:
         st.markdown("---")
         if st.button("🗑️ Delete Current Chat", key="delete_chat"):
             if st.session_state.active_chat in st.session_state.all_chats:
-                del st.session_state.chat_titles[st.session_state.active_chat]
+                del st.session_state.chat_titles[st.session_state.active_chart]
                 del st.session_state.all_chats[st.session_state.active_chat]
                 st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
                 st.session_state.is_generating = False
@@ -293,7 +343,7 @@ with message_container:
         </div>
         """, unsafe_allow_html=True)
     else:
-        for msg in chat[1:]:  # Skip system message
+        for msg in chat[1:]:
             with st.container():
                 if msg["role"] == "user":
                     st.markdown(f'<div class="chat-message user-message">{msg["content"]}</div>', unsafe_allow_html=True)
@@ -303,7 +353,7 @@ with message_container:
 # Show typing indicator if generating
 if st.session_state.is_generating:
     with st.chat_message("assistant"):
-        show_typing_indicator()
+        st.markdown(show_typing_indicator(), unsafe_allow_html=True)
 
 # Chat Input
 query = st.chat_input("💬 Ask about candidates...", disabled=st.session_state.is_generating)
@@ -322,12 +372,12 @@ if query and not st.session_state.is_generating:
     # Show typing indicator
     typing_placeholder = st.empty()
     with typing_placeholder:
-        show_typing_indicator()
+        st.markdown(show_typing_indicator(), unsafe_allow_html=True)
     
     # Process query
     try:
         if is_greeting(query):
-            reply = "Hello! 👋 I'm here to help you find information about candidates. How can I assist you today?"
+            reply = "Hello! I'm here to help you find information about candidates. How can I assist you today?"
         else:
             # Check if we have any documents
             try:
@@ -375,7 +425,7 @@ if query and not st.session_state.is_generating:
                         )
                         reply = resp.choices[0].message.content.strip()
                     except Exception as e:
-                        reply = f"⚠️ I'm having trouble generating a response right now. Please try again. Error: {str(e)}"
+                        reply = f"I'm having trouble generating a response right now. Please try again. Error: {str(e)}"
         
         # Add assistant response
         chat.append({"role": "assistant", "content": reply})
@@ -392,7 +442,7 @@ if query and not st.session_state.is_generating:
         
     except Exception as e:
         typing_placeholder.empty()
-        error_msg = f"⚠️ An unexpected error occurred: {str(e)}"
+        error_msg = f"An unexpected error occurred: {str(e)}"
         chat.append({"role": "assistant", "content": error_msg})
         st.error(error_msg)
     
