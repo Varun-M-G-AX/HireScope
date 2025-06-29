@@ -11,23 +11,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- SVG Avatars (Bootstrap Icons, theme aware) ---
+# --- SVG Avatars (Bootstrap Icons, theme aware via CSS) ---
 ROBOT_SVG = """
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor"
 class="bi bi-robot" viewBox="0 0 16 16">
   <path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5M3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.6 26.6 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.93.93 0 0 1-.765.935c-.845.147-2.34.346-4.235.346s-3.39-.2-4.235-.346A.93.93 0 0 1 3 9.219zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a25 25 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25 25 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135"/>
   <path d="M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2zM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5"/>
 </svg>
 """
 HUMAN_SVG = """
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor"
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor"
 class="bi bi-person-square" viewBox="0 0 16 16">
   <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
   <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1v-1c0-1-1-4-6-4s-6 3-6 4v1a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
 </svg>
 """
+EDIT_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
+class="bi bi-pencil-square" viewBox="0 0 16 16">
+  <path d="M15.502 1.94a.5.5 0 0 1 0 .706l-1 1a.5.5 0 0 1-.708 0l-1-1a.5.5 0 0 1 .708-.708l.646.647.646-.646a.5.5 0 0 1 .708 0z"/>
+  <path d="M13.5 3.207l-1-1L4.854 9.854a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l7.646-7.647zm-1.415 2.122L5.207 12.207l-1.147.382.382-1.147 6.879-6.879 1.146 1.147z"/>
+  <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-7A.5.5 0 0 0 14 6v7.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H10a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+</svg>
+"""
 
-# --- CSS Styling: Theme-adaptive using Streamlit variables ---
+# --- CSS Styling: Theme-adaptive using Streamlit variables and SVG coloring ---
 st.markdown("""
 <style>
 body { background: var(--background-color) !important; }
@@ -52,9 +60,7 @@ body { background: var(--background-color) !important; }
     background: var(--secondary-background-color, #e2e2e1);
     box-shadow: 0 2px 12px #0002;
 }
-.avatar.bot { background: var(--secondary-background-color, #717576); }
-.avatar.user { background: var(--secondary-background-color, #e2e2e1); }
-.avatar svg { display: block; margin: auto; }
+.avatar svg { display: block; margin: auto; color: var(--text-color, #181818);}
 .bubble {
     border-radius: 1.08rem; box-shadow: 0 2px 12px #0001;
     padding: 1.15rem 1.35rem; font-size: 1.11rem; line-height: 1.7;
@@ -98,6 +104,31 @@ body { background: var(--background-color) !important; }
     0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
     30% { transform: translateY(-7px); opacity: 1; }
 }
+/* Sidebar chat list and rename */
+.sidebar-chat-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+.sidebar-chat-avatar {
+    min-width: 22px; min-height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--secondary-background-color, #e2e2e1);
+}
+.sidebar-chat-avatar svg { width: 20px; height: 20px; color: var(--text-color, #181818);}
+.sidebar-chat-title {
+    flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sidebar-chat-btn {
+    background: none; border: none; padding: 0;
+    color: var(--text-color, #181818); cursor: pointer;
+}
+.sidebar-chat-btn:focus { outline: none; }
+.sidebar-chat-title-active { font-weight: 700; color: var(--primary-color, #242424);}
+.sidebar-rename-input {
+    width: 72%; border-radius: 6px; padding: 2px 8px;
+    border: 1.2px solid var(--primary-color, #242424);
+    font-size: 1rem; margin-right: 0.3rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -123,6 +154,8 @@ if "chat_titles" not in st.session_state:
     st.session_state.chat_titles = {k: k for k in st.session_state.all_chats}
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
+if "editing_title" not in st.session_state:
+    st.session_state.editing_title = None
 
 def should_rename(chat_key):
     if not chat_key.startswith("New Chat"):
@@ -157,10 +190,10 @@ def show_typing_indicator():
     </div>
     """, unsafe_allow_html=True)
 
-def truncate_title(title, max_length=32):
+def truncate_title(title, max_length=28):
     return title if len(title) <= max_length else title[:max_length-3] + "..."
 
-# --- Sidebar: Chat List ---
+# --- Sidebar: Chat List with Rename ---
 with st.sidebar:
     st.markdown('### 💬 Chats')
     if st.button("➕ New Chat", key="new_chat", use_container_width=True):
@@ -169,22 +202,55 @@ with st.sidebar:
         st.session_state.chat_titles[new_name] = new_name
         st.session_state.active_chat = new_name
         st.session_state.is_generating = False
+        st.session_state.editing_title = None
         st.rerun()
     if st.session_state.all_chats:
         sorted_chats = sorted(st.session_state.all_chats.keys(), reverse=True)
         for name in sorted_chats:
-            title = st.session_state.chat_titles.get(name, name)
-            display_title = truncate_title(title)
             is_active = name == st.session_state.active_chat
-            if st.button(
-                display_title,
-                key=f"select_{name}",
-                use_container_width=True,
-                help=title
-            ):
-                st.session_state.active_chat = name
-                st.session_state.is_generating = False
-                st.rerun()
+            display_title = st.session_state.chat_titles.get(name, name)
+            row_key = f"row_{name}"
+            avatar_svg = ROBOT_SVG
+            # Sidebar chat row
+            st.markdown(f"""<div class="sidebar-chat-row">""", unsafe_allow_html=True)
+            st.markdown(
+                f"""<div class="sidebar-chat-avatar">{ROBOT_SVG}</div>""",
+                unsafe_allow_html=True
+            )
+            # Rename UI
+            if st.session_state.editing_title == name:
+                new_val = st.text_input(
+                    "", value=display_title, key=f"rename_{name}",
+                    label_visibility="collapsed",
+                    help="Edit chat title",
+                    max_chars=40,
+                    placeholder="Edit chat title"
+                )
+                col1, col2 = st.columns([1,1])
+                with col1:
+                    if st.button("💾", key=f"rename_save_{name}"):
+                        st.session_state.chat_titles[name] = new_val
+                        st.session_state.editing_title = None
+                        st.rerun()
+                with col2:
+                    if st.button("❌", key=f"rename_cancel_{name}"):
+                        st.session_state.editing_title = None
+                        st.rerun()
+            else:
+                # Title with active state
+                style = "sidebar-chat-title sidebar-chat-title-active" if is_active else "sidebar-chat-title"
+                if st.button(truncate_title(display_title), key=f"select_{name}", use_container_width=True):
+                    st.session_state.active_chat = name
+                    st.session_state.is_generating = False
+                    st.session_state.editing_title = None
+                    st.rerun()
+                # Edit icon
+                edit_btn_key = f"edit_{name}"
+                if st.button(f"{EDIT_SVG}", key=edit_btn_key, help="Rename chat", use_container_width=False):
+                    st.session_state.editing_title = name
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
     if len(st.session_state.all_chats) > 1:
         if st.button("🗑️ Delete Current Chat", key="delete_chat", use_container_width=True):
             if st.session_state.active_chat in st.session_state.all_chats:
@@ -192,6 +258,7 @@ with st.sidebar:
                 del st.session_state.all_chats[st.session_state.active_chat]
                 st.session_state.active_chat = list(st.session_state.all_chats.keys())[0]
                 st.session_state.is_generating = False
+                st.session_state.editing_title = None
                 st.rerun()
     st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -209,8 +276,8 @@ else:
     for idx, msg in enumerate(chat[1:]):
         role = msg["role"]
         avatar = ROBOT_SVG if role == "assistant" else HUMAN_SVG
-        msg_class = f"bubble {role}"
-        row_class = f"message-row {role}"
+        msg_class = f"bubble {'bot' if role=='assistant' else 'user'}"
+        row_class = f"message-row {'user' if role=='user' else 'bot'}"
         st.markdown(f"""
         <div class="{row_class}">
             <div class="avatar {role}">{avatar}</div>
@@ -222,7 +289,7 @@ else:
         """, unsafe_allow_html=True)
 
 if st.session_state.is_generating:
-    st.markdown(f'<div class="message-row assistant"><div class="avatar assistant">{ROBOT_SVG}</div><div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="message-row bot"><div class="avatar assistant">{ROBOT_SVG}</div><div>', unsafe_allow_html=True)
     show_typing_indicator()
     st.markdown('</div></div>', unsafe_allow_html=True)
 
