@@ -367,6 +367,7 @@ if not st.session_state.sidebar_open:
 if st.session_state.sidebar_open:
     with st.sidebar:
         # New Chat Button
+        st.markdown("**Create New Chat**")
         if st.button("➕ New Chat", key="new_chat", help="Start a new conversation", use_container_width=True):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             title = f"New Chat"
