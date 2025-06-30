@@ -84,12 +84,12 @@ h2, h3 {
     font-weight: 600 !important;
 }
 
-/* Enhanced candidate card */
-.candidate-card {
+/* Enhanced candidate card styling for Streamlit containers */
+div[data-testid="stContainer"] {
     background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 1.5rem !important;
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-sm);
     transition: all 0.2s ease;
@@ -97,13 +97,13 @@ h2, h3 {
     overflow: hidden;
 }
 
-.candidate-card:hover {
+div[data-testid="stContainer"]:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
-    border-color: var(--primary-color);
+    border-color: var(--primary-color) !important;
 }
 
-.candidate-card::before {
+div[data-testid="stContainer"]::before {
     content: '';
     position: absolute;
     top: 0;
@@ -127,68 +127,31 @@ h2, h3 {
     font-weight: 600;
     border: 3px solid var(--bg-primary);
     box-shadow: var(--shadow-md);
-    margin-bottom: 1rem;
+    margin: 0 auto;
 }
 
-.candidate-name {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
+/* Streamlit image styling within containers */
+div[data-testid="stContainer"] img {
+    border-radius: 50%;
+    border: 3px solid var(--bg-primary);
+    box-shadow: var(--shadow-md);
 }
 
-.candidate-id {
-    font-size: 0.875rem;
-    color: var(--text-tertiary);
-    font-family: 'JetBrains Mono', monospace;
-    background: var(--bg-tertiary);
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-    display: inline-block;
-    margin-bottom: 0.5rem;
+/* Typography improvements */
+div[data-testid="stContainer"] h1, 
+div[data-testid="stContainer"] h2, 
+div[data-testid="stContainer"] h3,
+div[data-testid="stContainer"] h4 {
+    color: var(--text-primary) !important;
+    margin-bottom: 0.5rem !important;
 }
 
-.candidate-meta {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
+div[data-testid="stContainer"] p {
+    color: var(--text-secondary) !important;
+    margin-bottom: 0.5rem !important;
 }
 
-/* Contact info styling */
-.contact-info {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    margin: 1rem 0;
-    border: 1px solid var(--border-color);
-}
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.contact-item:last-child {
-    margin-bottom: 0;
-}
-
-.contact-icon {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-}
-
-/* Button styling */
-.action-buttons {
-    display: flex;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-}
-
+/* Button styling - keeping for reference but using Streamlit native styling above */
 .btn-primary {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
@@ -242,8 +205,8 @@ h2, h3 {
     box-shadow: var(--shadow-md);
 }
 
-/* Streamlit button styling within cards */
-.candidate-card .stButton > button {
+/* Streamlit button styling within bordered containers */
+div[data-testid="stContainer"] .stButton > button {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
     color: white !important;
     border: none !important;
@@ -256,33 +219,33 @@ h2, h3 {
     margin-bottom: 0 !important;
 }
 
-.candidate-card .stButton > button:hover {
+div[data-testid="stContainer"] .stButton > button:hover {
     transform: translateY(-1px) !important;
     box-shadow: var(--shadow-md) !important;
 }
 
-.candidate-card .stButton > button[kind="secondary"] {
+div[data-testid="stContainer"] .stButton > button[kind="secondary"] {
     background: var(--danger-color) !important;
     color: white !important;
 }
 
-.candidate-card .stButton > button[kind="secondary"]:hover {
+div[data-testid="stContainer"] .stButton > button[kind="secondary"]:hover {
     background: #dc2626 !important;
     transform: translateY(-1px) !important;
     box-shadow: var(--shadow-md) !important;
 }
 
-/* Remove button container margins within cards */
-.candidate-card .stButton {
+/* Remove button container margins within bordered containers */
+div[data-testid="stContainer"] .stButton {
     margin-bottom: 0 !important;
 }
 
-.candidate-card .element-container {
-    margin-bottom: 0 !important;
+div[data-testid="stContainer"] .element-container {
+    margin-bottom: 0.5rem !important;
 }
 
 /* Improve spacing between button columns */
-.candidate-card .stColumns {
+div[data-testid="stContainer"] .stColumns {
     gap: 0.75rem !important;
 }
 
@@ -555,49 +518,55 @@ for idx, (meta, doc) in enumerate(filtered_candidates):
     col = cols[idx % len(cols)]
     with col:
         # Create enhanced candidate card with all content inside
-        with st.container():
-            # Prepare contact info HTML
-            contact_html = ""
+        with st.container(border=True):
+            # Format upload date properly
+            display_date = upload_date if upload_date and upload_date != "N/A" else "Date not available"
+            
+            # Header section with avatar and basic info
+            header_col1, header_col2 = st.columns([1, 4])
+            
+            with header_col1:
+                if avatar_url:
+                    st.image(avatar_url, width=64)
+                else:
+                    st.markdown(f"""
+                    <div class="avatar-circle">{initials}</div>
+                    """, unsafe_allow_html=True)
+            
+            with header_col2:
+                st.markdown(f"**{name}**")
+                st.caption(f"ID: {candidate_id}")
+                st.caption(f"👨‍💼 Uploaded by **{uploaded_by}**")
+                st.caption(f"📅 {display_date}")
+            
+            # Contact information section
             if email or phone or linkedin:
+                st.markdown("**Contact Information**")
+                contact_col1, contact_col2 = st.columns([1, 1])
+                
                 contact_items = []
                 if email:
-                    contact_items.append(f'<div class="contact-item">📧 <a href="mailto:{email}" style="color: var(--primary-color); text-decoration: none;">{email}</a></div>')
+                    contact_items.append(f"📧 [{email}](mailto:{email})")
                 if phone:
-                    contact_items.append(f'<div class="contact-item">📞 {phone}</div>')
+                    contact_items.append(f"📞 {phone}")
                 if linkedin:
-                    contact_items.append(f'<div class="contact-item">🔗 <a href="{linkedin}" target="_blank" style="color: var(--primary-color); text-decoration: none;">LinkedIn</a></div>')
+                    contact_items.append(f"🔗 [LinkedIn]({linkedin})")
                 
-                contact_html = f"""
-                <div class="contact-info">
-                    {''.join(contact_items)}
-                </div>
-                """
-
-            st.markdown(f"""
-            <div class="candidate-card">
-                <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
-                    <div>
-                        {f'<img src="{avatar_url}" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid var(--bg-primary); box-shadow: var(--shadow-md);">' if avatar_url else f'<div class="avatar-circle">{initials}</div>'}
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="candidate-name">{name}</div>
-                        <div class="candidate-id">ID: {candidate_id}</div>
-                        <div class="candidate-meta">
-                            👨‍💼 Uploaded by <strong>{uploaded_by}</strong><br>
-                            📅 {upload_date}
-                        </div>
-                    </div>
-                </div>
+                # Split contact items between columns
+                mid_point = len(contact_items) // 2 + len(contact_items) % 2
                 
-                {contact_html}
+                with contact_col1:
+                    for item in contact_items[:mid_point]:
+                        st.markdown(item)
                 
-                <div class="action-buttons-container" style="margin-top: 1.5rem;">
-                    <!-- Action buttons will be placed here by Streamlit -->
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
+                with contact_col2:
+                    for item in contact_items[mid_point:]:
+                        st.markdown(item)
+                
+                st.markdown("---")
+            
             # Action buttons inside the card
+            st.markdown("**Actions**")
             col1, col2 = st.columns([1, 1])
             with col1:
                 view_summary = st.button("📄 View Summary", key=f"view_{idx}", use_container_width=True)
