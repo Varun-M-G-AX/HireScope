@@ -13,5 +13,5 @@ tags:
 - resume
 short_description: 💼 HireScopeAI – AI-Powered Résumé Assistant
 thumbnail: >-
-  https://cdn-uploads.huggingface.co/production/uploads/66bba80bae11a6e8f7b7d565/Zn5ZfxMu28N3U1P2vaeZE.png
+  https://cdn-uploads.huggingface.co/production/uploads/66bba80bae11a6e8f7b7d565/-gSFWs0EnHKBn82CwTLZk.png
 ---
