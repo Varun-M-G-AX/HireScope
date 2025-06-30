@@ -1,15 +1,45 @@
+import re
 import streamlit as st
-import json
-from utils import collection, chroma_client
+from datetime import datetime
+from utils import collection, openai
 
+# --- Page Configuration ---
 st.set_page_config(
-    page_title="HireScope - Candidate Profiles",
-    page_icon="📇",
+    page_title="HireScope Chat",
+    page_icon="💼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Enhanced CSS for modern UI
+# --- Initialize Session State ---
+if 'sidebar_open' not in st.session_state:
+    st.session_state.sidebar_open = True
+
+if "chats" not in st.session_state:
+    st.session_state.chats = {}
+    initial_title = "New Chat"
+    st.session_state.chats[initial_title] = [{"role": "system", "content": "You are a recruiter assistant."}]
+    st.session_state.active = initial_title
+
+if "editing_chat" not in st.session_state:
+    st.session_state.editing_chat = None
+
+if "dropdown_open" not in st.session_state:
+    st.session_state.dropdown_open = {}
+
+if "is_generating" not in st.session_state:
+    st.session_state.is_generating = False
+
+# --- SVG Icons ---
+ICONS = {
+    "plus": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4'/></svg>""",
+    "robot": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5'/><path d='M3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.6 26.6 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.93.93 0 0 1-.765.935c-.845.147-2.34.346-4.235.346s-3.39-.2-4.235-.346A.93.93 0 0 1 3 9.219zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a25 25 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25 25 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135'/><path d='M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2zM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5'/></svg>""",
+    "person": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z'/></svg>""",
+    "chevron_right": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path fill-rule='evenodd' d='M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708'/></svg>""",
+    "menu": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5'/></svg>"""
+}
+
+# --- Modern CSS with Dark/Light Mode Support ---
 st.markdown("""
 <style>
 /* Import Inter font */
@@ -20,21 +50,12 @@ st.markdown("""
     --primary-color: #667eea;
     --secondary-color: #764ba2;
     --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
     --text-primary: #1f2937;
     --text-secondary: #6b7280;
-    --text-tertiary: #9ca3af;
     --bg-primary: #ffffff;
     --bg-secondary: #f9fafb;
-    --bg-tertiary: #f3f4f6;
     --border-color: #e5e7eb;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 /* Dark mode */
@@ -42,14 +63,10 @@ st.markdown("""
     :root {
         --text-primary: #f9fafb;
         --text-secondary: #d1d5db;
-        --text-tertiary: #9ca3af;
         --bg-primary: #111827;
         --bg-secondary: #1f2937;
-        --bg-tertiary: #374151;
         --border-color: #374151;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
     }
 }
 
@@ -67,6 +84,15 @@ st.markdown("""
     display: none !important;
 }
 
+footer {
+    visibility: hidden;
+}
+
+.stMainBlockContainer {
+    padding-top: 2rem;
+    max-width: 1200px;
+}
+
 /* Typography */
 h1 {
     color: var(--text-primary) !important;
@@ -79,501 +105,449 @@ h1 {
     background-clip: text;
 }
 
-h2, h3 {
-    color: var(--text-primary) !important;
-    font-weight: 600 !important;
+/* Sidebar styling */
+.stSidebar {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
 }
 
-/* Enhanced candidate card */
-.candidate-card {
-    background: var(--bg-primary);
+.stSidebar .stButton > button {
+    width: 100%;
+    border-radius: 8px;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    box-shadow: var(--shadow-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-weight: 500;
     transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
 }
 
-.candidate-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
-    border-color: var(--primary-color);
+.stSidebar .stButton > button:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
 }
 
-.candidate-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
+.stSidebar .stButton > button[kind="primary"] {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-}
-
-/* Avatar styling */
-.avatar-circle {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: none;
     color: white;
+}
+
+.stSidebar .stButton > button[kind="primary"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Message styling */
+.message {
+    padding: 1.5rem;
+    margin: 1rem 0;
+    border-radius: 12px;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow);
+}
+
+.message.user {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05));
+    border-left: 4px solid var(--primary-color);
+}
+
+.message.assistant {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+    border-left: 4px solid var(--success-color);
+}
+
+.message-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    font-weight: 600;
-    border: 3px solid var(--bg-primary);
-    box-shadow: var(--shadow-md);
-    margin-bottom: 1rem;
-}
-
-.candidate-name {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-}
-
-.candidate-id {
-    font-size: 0.875rem;
-    color: var(--text-tertiary);
-    font-family: 'JetBrains Mono', monospace;
-    background: var(--bg-tertiary);
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-    display: inline-block;
-    margin-bottom: 0.5rem;
-}
-
-.candidate-meta {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-}
-
-/* Contact info styling */
-.contact-info {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    margin: 1rem 0;
-    border: 1px solid var(--border-color);
-}
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.contact-item:last-child {
-    margin-bottom: 0;
-}
-
-.contact-icon {
-    width: 16px;
-    height: 16px;
     flex-shrink: 0;
+    box-shadow: var(--shadow);
 }
 
-/* Button styling */
-.action-buttons {
-    display: flex;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-}
-
-.btn-primary {
+.message.user .message-icon {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: var(--shadow-sm);
 }
 
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-danger {
-    background: var(--danger-color);
+.message.assistant .message-icon {
+    background: linear-gradient(135deg, var(--success-color), #059669);
     color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: var(--shadow-sm);
 }
 
-.btn-danger:hover {
-    background: #dc2626;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-/* Summary modal */
-.summary-modal {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-top: 1rem;
-    max-height: 400px;
-    overflow-y: auto;
-    box-shadow: var(--shadow-md);
-}
-
-.summary-content {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: var(--text-secondary);
-    white-space: pre-wrap;
-    background: var(--bg-primary);
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-}
-
-/* Filter section */
-.filter-section {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-}
-
-/* Stats cards */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    text-align: center;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
-}
-
-.stat-number {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-/* Empty state */
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    border: 2px dashed var(--border-color);
-    margin: 2rem 0;
-}
-
-.empty-state-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
-}
-
-.empty-state-title {
-    font-size: 1.5rem;
-    font-weight: 600;
+.message-content {
+    flex: 1;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    line-height: 1.6;
 }
 
-.empty-state-text {
-    color: var(--text-secondary);
-    font-size: 1rem;
+.message-content strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Chat input */
+.stChatInput > div {
+    border-radius: 12px !important;
+    border: 1px solid var(--border-color) !important;
+    background: var(--bg-primary) !important;
+    box-shadow: var(--shadow) !important;
+}
+
+.stChatInput input {
+    color: var(--text-primary) !important;
+    background: transparent !important;
+    font-size: 1rem !important;
+    padding: 1rem !important;
+}
+
+/* Loading animation */
+.thinking-dots {
+    display: inline-flex;
+    gap: 0.25rem;
+    align-items: center;
+    margin-left: 0.5rem;
+}
+
+.thinking-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 50%;
+    background: var(--success-color);
+    opacity: 0.4;
+    animation: thinking 1.4s infinite ease-in-out;
+}
+
+.thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+.thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+.thinking-dot:nth-child(3) { animation-delay: 0; }
+
+@keyframes thinking {
+    0%, 80%, 100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+}
+
+.loading-container {
+    padding: 1.5rem;
+    margin: 1rem 0;
+    border-radius: 12px;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+    border-left: 4px solid var(--success-color);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-    .candidate-card {
+    .stMainBlockContainer {
         padding: 1rem;
     }
     
-    .action-buttons {
-        flex-direction: column;
+    .message {
+        padding: 1rem;
+        gap: 0.75rem;
     }
     
-    .stats-grid {
-        grid-template-columns: 1fr;
+    .message-icon {
+        width: 2rem;
+        height: 2rem;
     }
     
     h1 {
         font-size: 2rem !important;
     }
 }
+
+/* Toggle button for sidebar */
+.sidebar-toggle {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1000;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.sidebar-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.main-with-toggle {
+    margin-left: 80px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# Header
-st.markdown("# 📇 Candidate Profiles")
-st.markdown("*Browse and manage all résumés processed by HireScope AI*")
+# --- Helper Functions ---
+def generate_chat_title(content):
+    """Generate a short title from the first message"""
+    words = content.split()[:4]
+    return " ".join(words) + ("..." if len(content.split()) > 4 else "")
 
-# Fetching data
-try:
-    res = collection.get(include=["metadatas", "documents"])
-    metas, docs = res["metadatas"], res["documents"]
-except Exception as e:
-    st.error(f"🚨 Failed to load candidate data: {e}")
-    metas, docs = [], []
-
-# Stats section
-if metas:
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{len(metas)}</div>
-            <div class="stat-label">Total Candidates</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        uploaders = set(meta.get('uploaded_by', 'Unknown') for meta in metas)
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{len(uploaders)}</div>
-            <div class="stat-label">HR Users</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        # Count profiles with contact info
-        with_contact = sum(1 for meta, doc in zip(metas, docs) 
-                          if any(field in doc.lower() for field in ['email', 'phone', 'linkedin']))
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{with_contact}</div>
-            <div class="stat-label">With Contact Info</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        # Recent uploads (last 7 days - simplified)
-        recent = len([m for m in metas if 'upload_timestamp' in m])
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{recent}</div>
-            <div class="stat-label">Recent Uploads</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# Sidebar filters
-with st.sidebar:
-    st.markdown("## 🔍 Filter Candidates")
-    
-    name_filter = st.text_input("👤 Candidate Name", placeholder="Enter name...")
-    id_filter = st.text_input("🆔 Candidate ID", placeholder="Enter ID...")
-    by_hr = st.text_input("👨‍💼 Uploaded By", placeholder="HR user...")
-    keywords = st.text_input("🔍 Keywords", placeholder="Skills, keywords...")
-    
-    # Advanced filters
-    with st.expander("🎯 Advanced Filters"):
-        has_email = st.checkbox("Has Email")
-        has_phone = st.checkbox("Has Phone")
-        has_linkedin = st.checkbox("Has LinkedIn")
-    
-    if st.button("🔄 Reset Filters", use_container_width=True):
-        st.rerun()
-
-def matches(meta, doc):
-    basic_match = (
-        (name_filter.lower() in meta.get('name', '').lower() if name_filter else True) and
-        (id_filter.lower() in meta.get('candidate_id', '').lower() if id_filter else True) and
-        (by_hr.lower() in meta.get('uploaded_by', '').lower() if by_hr else True) and
-        (keywords.lower() in doc.lower() if keywords else True)
-    )
-    
-    if not basic_match:
-        return False
-    
-    # Advanced filters
-    if has_email and 'email' not in doc.lower():
-        return False
-    if has_phone and 'phone' not in doc.lower():
-        return False
-    if has_linkedin and 'linkedin' not in doc.lower():
-        return False
-    
-    return True
-
-# Filter and display candidates
-filtered_candidates = [(meta, doc) for meta, doc in zip(metas, docs) if matches(meta, doc)]
-
-if not metas:
+# --- Sidebar Toggle Logic ---
+if not st.session_state.sidebar_open:
+    # Show toggle button when sidebar is closed
     st.markdown("""
-    <div class="empty-state">
-        <div class="empty-state-icon">📂</div>
-        <div class="empty-state-title">No Candidates Found</div>
-        <div class="empty-state-text">
-            Start by uploading some résumés using the 'Upload Résumés' page.
-        </div>
-    </div>
+    <button class="sidebar-toggle" onclick="window.parent.document.querySelector('[data-testid=\\"collapsedControl\\"]').click()">
+        """ + ICONS['menu'] + """
+    </button>
+    <div class="main-with-toggle">
     """, unsafe_allow_html=True)
-    st.stop()
 
-if not filtered_candidates:
-    st.markdown("""
-    <div class="empty-state">
-        <div class="empty-state-icon">🔍</div>
-        <div class="empty-state-title">No Matches Found</div>
-        <div class="empty-state-text">
-            Try adjusting your search criteria or clearing the filters.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.stop()
-
-# Display results
-st.markdown(f"## 📋 Results ({len(filtered_candidates)} candidates)")
-
-# Grid layout for candidates
-cols = st.columns(2)
-
-for idx, (meta, doc) in enumerate(filtered_candidates):
-    name = meta.get('name', 'Unknown')
-    uploaded_by = meta.get('uploaded_by', 'N/A')
-    upload_date = meta.get('upload_timestamp', 'N/A')
-    candidate_id = meta.get('candidate_id', '')
-
-    # Avatar logic
-    avatar_url = meta.get('avatar_url')
-    initials = "".join([w[0] for w in name.split() if w and w[0].isalpha()]).upper()[:2] or "👤"
-
-    # Parse contact info
-    email = phone = linkedin = None
-    summary_json = None
-    try:
-        summary_json = json.loads(doc)
-        email = summary_json.get("email")
-        phone = summary_json.get("phone")
-        linkedin = summary_json.get("linkedin")
-    except Exception:
-        summary_json = None
-
-    col = cols[idx % len(cols)]
-    with col:
-        # Create enhanced candidate card
-        with st.container():
-            st.markdown(f"""
-            <div class="candidate-card">
-                <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                    <div>
-                        {f'<img src="{avatar_url}" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid var(--bg-primary); box-shadow: var(--shadow-md);">' if avatar_url else f'<div class="avatar-circle">{initials}</div>'}
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="candidate-name">{name}</div>
-                        <div class="candidate-id">ID: {candidate_id}</div>
-                        <div class="candidate-meta">
-                            👨‍💼 Uploaded by <strong>{uploaded_by}</strong><br>
-                            📅 {upload_date}
-                        </div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            # Contact information
-            if email or phone or linkedin:
-                contact_items = []
-                if email:
-                    contact_items.append(f'<div class="contact-item">📧 <a href="mailto:{email}" style="color: var(--primary-color); text-decoration: none;">{email}</a></div>')
-                if phone:
-                    contact_items.append(f'<div class="contact-item">📞 {phone}</div>')
-                if linkedin:
-                    contact_items.append(f'<div class="contact-item">🔗 <a href="{linkedin}" target="_blank" style="color: var(--primary-color); text-decoration: none;">LinkedIn</a></div>')
+# --- Sidebar ---
+if st.session_state.sidebar_open:
+    with st.sidebar:
+        # Header with collapse button
+        col1, col2 = st.columns([0.8, 0.2])
+        with col1:
+            st.markdown("### 💼 HireScope")
+        with col2:
+            if st.button(">>", key="collapse_sidebar", help="Collapse sidebar"):
+                st.session_state.sidebar_open = False
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # New Chat Button
+        if st.button("➕ New Chat", key="new_chat", help="Start a new conversation", use_container_width=True, type="primary"):
+            title = "New Chat"
+            counter = 1
+            while title in st.session_state.chats:
+                title = f"New Chat {counter}"
+                counter += 1
+            
+            st.session_state.chats[title] = [{"role": "system", "content": "You are a recruiter assistant."}]
+            st.session_state.active = title
+            st.session_state.editing_chat = None
+            st.rerun()
+        
+        st.markdown("---")
+        
+        # Chat History
+        if st.session_state.chats:
+            st.markdown("**Recent Chats**")
+            
+            for chat_key in sorted(st.session_state.chats.keys(), reverse=True):
+                is_active = chat_key == st.session_state.active
+                is_editing = st.session_state.editing_chat == chat_key
                 
-                st.markdown(f"""
-                <div class="contact-info">
-                    {''.join(contact_items)}
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-            # Action buttons
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                view_summary = st.button("📄 View Summary", key=f"view_{idx}", use_container_width=True)
-            with col2:
-                delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}", use_container_width=True, type="secondary")
-
-            # Summary modal
-            if view_summary:
-                if summary_json:
-                    summary_str = json.dumps(summary_json, indent=2, ensure_ascii=False)
-                else:
-                    summary_str = doc
-                
-                st.markdown(f"""
-                <div class="summary-modal">
-                    <h4 style="color: var(--text-primary); margin-bottom: 1rem;">📄 Candidate Summary</h4>
-                    <div class="summary-content">{summary_str}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # Delete confirmation
-            if delete_candidate:
-                st.warning(f"⚠️ Delete **{name}**? This action cannot be undone.")
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("✅ Confirm Delete", key=f"confirm_{idx}", type="primary"):
-                        try:
-                            collection.delete(ids=[candidate_id])
-                            if hasattr(chroma_client, "persist"):
-                                chroma_client.persist()
-                            st.success(f"✅ Successfully deleted {name}")
+                if is_editing:
+                    # Rename mode
+                    col1, col2 = st.columns([0.85, 0.15])
+                    with col1:
+                        new_name = st.text_input(
+                            "", 
+                            value=chat_key, 
+                            key=f"rename_{chat_key}",
+                            label_visibility="collapsed"
+                        )
+                    with col2:
+                        if st.button("✓", key=f"confirm_{chat_key}", help="Confirm rename"):
+                            if new_name and new_name != chat_key and new_name not in st.session_state.chats:
+                                st.session_state.chats[new_name] = st.session_state.chats.pop(chat_key)
+                                if st.session_state.active == chat_key:
+                                    st.session_state.active = new_name
+                            st.session_state.editing_chat = None
                             st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Error deleting candidate: {e}")
-                with c2:
-                    if st.button("❌ Cancel", key=f"cancel_{idx}"):
-                        st.rerun()
+                else:
+                    # Normal mode
+                    col1, col2 = st.columns([0.85, 0.15])
+                    
+                    with col1:
+                        # Chat selection button
+                        button_type = "primary" if is_active else "secondary"
+                        if st.button(
+                            chat_key, 
+                            key=f"select_{chat_key}",
+                            help=f"Switch to {chat_key}",
+                            use_container_width=True,
+                            type=button_type
+                        ):
+                            st.session_state.active = chat_key
+                            st.session_state.editing_chat = None
+                            st.rerun()
+                    
+                    with col2:
+                        # Three dots menu
+                        if st.button("⋮", key=f"menu_{chat_key}", help="Chat options"):
+                            st.session_state.dropdown_open[chat_key] = not st.session_state.dropdown_open.get(chat_key, False)
+                            st.rerun()
+                    
+                    # Dropdown menu
+                    if st.session_state.dropdown_open.get(chat_key, False):
+                        with st.container():
+                            subcol1, subcol2 = st.columns(2)
+                            with subcol1:
+                                if st.button("✏️", key=f"edit_{chat_key}", help="Rename chat"):
+                                    st.session_state.editing_chat = chat_key
+                                    st.session_state.dropdown_open[chat_key] = False
+                                    st.rerun()
+                            with subcol2:
+                                if st.button("🗑️", key=f"delete_{chat_key}", help="Delete chat"):
+                                    if len(st.session_state.chats) > 1:
+                                        del st.session_state.chats[chat_key]
+                                        if st.session_state.active == chat_key:
+                                            st.session_state.active = next(iter(st.session_state.chats))
+                                        st.session_state.dropdown_open.pop(chat_key, None)
+                                        if st.session_state.editing_chat == chat_key:
+                                            st.session_state.editing_chat = None
+                                        st.rerun()
+
+# --- Main Chat Area ---
+st.markdown("# HireScope Chat")
+st.markdown("*AI-Powered Recruitment Assistant*")
+
+# Get active chat
+active_key = st.session_state.active
+if active_key not in st.session_state.chats:
+    # Fallback if active chat was deleted
+    active_key = next(iter(st.session_state.chats))
+    st.session_state.active = active_key
+
+chat = st.session_state.chats[active_key]
+
+# Display chat messages
+for msg in chat[1:]:  # Skip system message
+    role = msg['role']
+    content = msg['content']
+    
+    if role == "user":
+        st.markdown(f"""
+        <div class="message user">
+            <div class="message-icon">
+                {ICONS['person']}
+            </div>
+            <div class="message-content">
+                <strong>You</strong><br>
+                {content}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="message assistant">
+            <div class="message-icon">
+                {ICONS['robot']}
+            </div>
+            <div class="message-content">
+                <strong>HireScope Assistant</strong><br>
+                {content}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Show loading animation when generating response
+if st.session_state.is_generating:
+    st.markdown(f"""
+    <div class="loading-container">
+        <div class="message-icon" style="background: linear-gradient(135deg, var(--success-color), #059669); color: white; width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: var(--shadow);">
+            {ICONS['robot']}
+        </div>
+        <div style="flex: 1; color: var(--text-primary); line-height: 1.6;">
+            <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <strong>HireScope Assistant</strong>
+                <div class="thinking-dots">
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                </div>
+            </div>
+            <div style="color: var(--text-secondary);">Thinking...</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Chat input
+prompt = st.chat_input("Ask about candidates, resumes, or hiring...")
+
+if prompt:
+    # Add user message
+    chat.append({"role": "user", "content": prompt})
+    
+    # Set generating state to show loading
+    st.session_state.is_generating = True
+    st.rerun()
+
+# Process response if we're in generating state
+if st.session_state.is_generating:
+    # Generate response
+    try:
+        total = collection.count()
+        if total == 0:
+            reply = "⚠️ No resume data available. Please upload some resumes to get started."
+        else:
+            # Query the vector database
+            hits = collection.query(query_texts=[chat[-1]["content"]], n_results=3)
+            context = "\n---\n".join(hits.get("documents", [[]])[0])
+            
+            # Update system message with context
+            chat[0]["content"] = f"""You are a recruiter assistant. Answer ONLY from these résumé snippets:
+{context}
+Be helpful, professional, and provide specific information from the resumes when available."""
+            
+            # Get AI response
+            result = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=chat,
+                temperature=0.3,
+                max_tokens=1000
+            )
+            reply = result.choices[0].message.content
+            
+    except Exception as e:
+        reply = f"⚠️ Error processing your request: {str(e)}"
+    
+    # Add assistant response
+    chat.append({"role": "assistant", "content": reply})
+    
+    # Update chat title if it's still default
+    if active_key.startswith("New Chat") and len(chat) == 3:  # System + User + Assistant
+        new_title = generate_chat_title(chat[-2]["content"])  # Use user message for title
+        if new_title != active_key:
+            st.session_state.chats[new_title] = st.session_state.chats.pop(active_key)
+            st.session_state.active = new_title
+    
+    # Reset generating state
+    st.session_state.is_generating = False
+    st.rerun()
+
+# Close the main content div if sidebar is closed
+if not st.session_state.sidebar_open:
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; padding: 1rem 0;">
-    HireScope Candidate Management • Built with ❤️ using Streamlit
+    Built with ❤️ using Streamlit • HireScope Chat v2.0
 </div>
 """, unsafe_allow_html=True)
