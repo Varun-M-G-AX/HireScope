@@ -322,9 +322,9 @@ header[data-testid="stHeader"] {display: none;}
 }
 
 /* Hide Streamlit's settings menu */
-.stApp > header {visibility: hidden;}
+.stApp > header {visibility: visible;}
 .stDecoration {visibility: hidden;}
-#MainMenu {visibility: hidden;}
+#MainMenu {visibility: visible;}
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -368,13 +368,46 @@ if "is_generating" not in st.session_state:
 
 # --- Sidebar Toggle Button (when sidebar is closed) ---
 if not st.session_state.sidebar_open:
-    # Create columns to position the toggle button
-    toggle_col1, toggle_col2 = st.columns([0.1, 0.9])
+    # Create the toggle button using HTML/JavaScript for better control
+    st.markdown(f"""
+    <div id="sidebar-toggle-container">
+        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+            {ICONS['menu']}
+        </button>
+    </div>
     
-    with toggle_col1:
-        if st.button("☰", key="open_sidebar_btn", help="Open sidebar"):
-            st.session_state.sidebar_open = True
-            st.rerun()
+    <script>
+    function toggleSidebar() {{
+        // Find the button in Streamlit and click it
+        const buttons = parent.document.querySelectorAll('button[kind="secondary"]');
+        const toggleBtn = Array.from(buttons).find(btn => btn.textContent.includes('Open Sidebar'));
+        if (toggleBtn) toggleBtn.click();
+    }}
+    </script>
+    """, unsafe_allow_html=True)
+    
+    # Hidden Streamlit button that actually handles the state change
+    if st.button("Open Sidebar", key="hidden_open_sidebar_btn", help="Open sidebar"):
+        st.session_state.sidebar_open = True
+        st.rerun()
+
+# --- Additional CSS for the toggle button ---
+st.markdown("""
+<style>
+/* Hide the hidden button */
+button[kind="secondary"]:has-text("Open Sidebar") {
+    display: none !important;
+}
+
+/* Style for the custom toggle button container */
+#sidebar-toggle-container {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 9999;
+}
+</style>
+""", unsafe_allow_html=True)
     
     # Add some styling for the toggle button
     st.markdown("""
