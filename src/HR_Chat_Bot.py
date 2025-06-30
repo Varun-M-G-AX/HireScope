@@ -408,34 +408,6 @@ button[kind="secondary"]:has-text("Open Sidebar") {
 }
 </style>
 """, unsafe_allow_html=True)
-    
-    # Add some styling for the toggle button
-    st.markdown("""
-    <style>
-    .stButton > button[kind="secondary"] {
-        background-color: rgba(28, 131, 225, 0.9) !important;
-        color: white !important;
-        border: 1px solid rgba(28, 131, 225, 0.5) !important;
-        border-radius: 0.5rem !important;
-        padding: 0.75rem !important;
-        position: fixed !important;
-        top: 1rem !important;
-        left: 1rem !important;
-        z-index: 9999 !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-        min-width: 44px !important;
-        min-height: 44px !important;
-        backdrop-filter: blur(10px) !important;
-    }
-    
-    .stButton > button[kind="secondary"]:hover {
-        background-color: rgba(28, 131, 225, 1) !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 # --- Sidebar ---
 if st.session_state.sidebar_open:
     with st.sidebar:
