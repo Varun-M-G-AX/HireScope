@@ -3,9 +3,9 @@ import streamlit as st
 from datetime import datetime
 from utils import collection, openai  # You must provide your own collection and openai setup
 
-
-# Remove the condition that hides the sidebar completely
-# Instead of checking sidebar_open, always show sidebar but make it collapsible
+# Initialize sidebar state first
+if 'sidebar_open' not in st.session_state:
+    st.session_state.sidebar_open = True
 
 # --- Bootstrap SVG Icons ---
 ICONS = {
@@ -17,7 +17,8 @@ ICONS = {
     "check": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z'/></svg>""",
     "x": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708'/></svg>""",
     "robot": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5'/><path d='M3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.6 26.6 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.93.93 0 0 1-.765.935c-.845.147-2.34.346-4.235.346s-3.39-.2-4.235-.346A.93.93 0 0 1 3 9.219zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a25 25 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25 25 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135'/><path d='M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2zM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5'/></svg>""",
-    "person": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z'/></svg>"""
+    "person": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z'/></svg>""",
+    "menu": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5'/></svg>"""
 }
 
 # --- Custom CSS for Modern UI ---
@@ -28,27 +29,39 @@ st.markdown("""
 header[data-testid="stHeader"] {display: none;}
 .stMainBlockContainer {padding-top: 1rem;}
 
-/* Sidebar toggle button */
-.sidebar-toggle {
+/* Sidebar toggle button - Fixed positioning and visibility */
+.sidebar-toggle-btn {
     position: fixed;
     top: 1rem;
     left: 1rem;
-    z-index: 999;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 9999;
+    background: rgba(28, 131, 225, 0.9);
+    border: 1px solid rgba(28, 131, 225, 0.5);
     border-radius: 0.5rem;
-    padding: 0.5rem;
+    padding: 0.75rem;
     cursor: pointer;
     backdrop-filter: blur(10px);
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 44px;
+    min-height: 44px;
 }
 
-.sidebar-toggle:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
+.sidebar-toggle-btn:hover {
+    background: rgba(28, 131, 225, 1);
+    border-color: rgba(28, 131, 225, 0.8);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Adjust main content when sidebar is closed */
+.main-content-expanded {
+    margin-left: 0 !important;
+    padding-left: 80px; /* Space for toggle button */
 }
 
 /* Skeleton loading animation */
@@ -160,7 +173,6 @@ header[data-testid="stHeader"] {display: none;}
     cursor: pointer;
     transition: background-color 0.2s ease;
     position: relative;
-    group: hover;
 }
 
 .chat-item:hover {
@@ -303,7 +315,17 @@ header[data-testid="stHeader"] {display: none;}
     .chat-title {
         font-size: 0.8rem;
     }
+    
+    .main-content-expanded {
+        padding-left: 60px;
+    }
 }
+
+/* Hide Streamlit's settings menu */
+.stApp > header {visibility: hidden;}
+.stDecoration {visibility: hidden;}
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -311,75 +333,8 @@ header[data-testid="stHeader"] {display: none;}
 st.set_page_config(
     page_title="HireScope Chat", 
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded" if st.session_state.sidebar_open else "collapsed"
 )
-
-# Initialize sidebar state
-if 'sidebar_open' not in st.session_state:
-    st.session_state.sidebar_open = True
-
-# --- CSS for Floating Sidebar Toggle ---
-st.markdown("""
-<style>
-.floating-toggle {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 999;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #ddd;
-    border-radius: 0.5rem;
-    padding: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    cursor: pointer;
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: black;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-# Add this CSS to make the toggle button work better
-st.markdown("""
-<style>
-.floating-toggle {
-    position: fixed !important;
-    top: 1rem !important;
-    left: 1rem !important;
-    z-index: 999 !important;
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: 1px solid #ddd !important;
-    border-radius: 0.5rem !important;
-    padding: 0.5rem !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Floating button to open sidebar when it's closed
-if not st.session_state.sidebar_open:
-    st.markdown("""
-    <div class="floating-toggle" onclick="document.getElementById('open_sidebar_btn').click()">☰</div>
-    """, unsafe_allow_html=True)
-
-    if st.button("Open Sidebar", key="open_sidebar_btn"):
-        st.session_state.sidebar_open = True
-        st.rerun()
-
-
-# Show toggle button when sidebar is closed
-if not st.session_state.get('sidebar_open', True):
-    # Create a floating button
-    col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
-    with col1:
-        if st.button("☰", key="open_sidebar", help="Open sidebar"):
-            st.session_state.sidebar_open = True
-            st.rerun()
-
-# Initialize sidebar state
-if 'sidebar_open' not in st.session_state:
-    st.session_state.sidebar_open = True
 
 # --- Helper Functions ---
 def generate_chat_title(content):
@@ -411,46 +366,70 @@ if "dropdown_open" not in st.session_state:
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
 
-# --- Sidebar Toggle Button (when sidebar is collapsed) ---
-if not st.session_state.get('sidebar_open', True):
-    st.markdown(f"""
-    <div class="sidebar-toggle" onclick="document.getElementById('sidebar_toggle_btn').click()">
-        {ICONS['chat']}
-    </div>
-    """, unsafe_allow_html=True)
+# --- Sidebar Toggle Button (when sidebar is closed) ---
+if not st.session_state.sidebar_open:
+    # Create columns to position the toggle button
+    toggle_col1, toggle_col2 = st.columns([0.1, 0.9])
     
-    # Hidden button to trigger sidebar toggle
-    if st.button("", key="sidebar_toggle_btn", help="Open sidebar"):
-        st.session_state.sidebar_open = True
-        st.rerun()
+    with toggle_col1:
+        if st.button("☰", key="open_sidebar_btn", help="Open sidebar"):
+            st.session_state.sidebar_open = True
+            st.rerun()
+    
+    # Add some styling for the toggle button
+    st.markdown("""
+    <style>
+    .stButton > button[kind="secondary"] {
+        background-color: rgba(28, 131, 225, 0.9) !important;
+        color: white !important;
+        border: 1px solid rgba(28, 131, 225, 0.5) !important;
+        border-radius: 0.5rem !important;
+        padding: 0.75rem !important;
+        position: fixed !important;
+        top: 1rem !important;
+        left: 1rem !important;
+        z-index: 9999 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        backdrop-filter: blur(10px) !important;
+    }
+    
+    .stButton > button[kind="secondary"]:hover {
+        background-color: rgba(28, 131, 225, 1) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- Sidebar ---
-if st.session_state.get('sidebar_open', True):
+if st.session_state.sidebar_open:
     with st.sidebar:
-        # Close sidebar button
+        # Header with close button
         col1, col2 = st.columns([0.8, 0.2])
         with col1:
-            st.markdown("### HireScope")
+            st.markdown("### 💼 HireScope")
         with col2:
             if st.button("✕", key="close_sidebar", help="Close sidebar"):
                 st.session_state.sidebar_open = False
                 st.rerun()
         
+        st.markdown("---")
+        
         # New Chat Button
-        new_chat_col = st.container()
-        with new_chat_col:
-            if st.button("New Chat", key="new_chat", help="Start a new conversation"):
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-                title = f"New Chat"
-                counter = 1
-                while title in st.session_state.chats:
-                    title = f"New Chat {counter}"
-                    counter += 1
-                
-                st.session_state.chats[title] = [{"role": "system", "content": "You are a recruiter assistant."}]
-                st.session_state.active = title
-                st.session_state.editing_chat = None
-                st.rerun()
+        if st.button("➕ New Chat", key="new_chat", help="Start a new conversation", use_container_width=True):
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            title = f"New Chat"
+            counter = 1
+            while title in st.session_state.chats:
+                title = f"New Chat {counter}"
+                counter += 1
+            
+            st.session_state.chats[title] = [{"role": "system", "content": "You are a recruiter assistant."}]
+            st.session_state.active = title
+            st.session_state.editing_chat = None
+            st.rerun()
         
         st.markdown("---")
         
@@ -462,74 +441,71 @@ if st.session_state.get('sidebar_open', True):
                 is_active = chat_key == st.session_state.active
                 is_editing = st.session_state.editing_chat == chat_key
                 
-                # Create container for each chat item
-                chat_container = st.container()
-                
-                with chat_container:
-                    if is_editing:
-                        # Rename mode
-                        col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
-                        with col1:
-                            new_name = st.text_input(
-                                "", 
-                                value=chat_key, 
-                                key=f"rename_{chat_key}",
-                                label_visibility="collapsed"
-                            )
-                        with col2:
-                            if st.button("✓", key=f"confirm_{chat_key}", help="Confirm rename"):
-                                if new_name and new_name != chat_key and new_name not in st.session_state.chats:
-                                    st.session_state.chats[new_name] = st.session_state.chats.pop(chat_key)
-                                    if st.session_state.active == chat_key:
-                                        st.session_state.active = new_name
-                                st.session_state.editing_chat = None
-                                st.rerun()
-                        with col3:
-                            if st.button("✕", key=f"cancel_{chat_key}", help="Cancel rename"):
-                                st.session_state.editing_chat = None
-                                st.rerun()
-                    else:
-                        # Normal mode
-                        col1, col2 = st.columns([0.85, 0.15])
-                        
-                        with col1:
-                            # Chat selection button
-                            button_style = "primary" if is_active else "secondary"
-                            if st.button(
-                                chat_key, 
-                                key=f"select_{chat_key}",
-                                help=f"Switch to {chat_key}",
-                                use_container_width=True
-                            ):
-                                st.session_state.active = chat_key
-                                st.session_state.editing_chat = None
-                                st.rerun()
-                        
-                        with col2:
-                            # Three dots menu
-                            if st.button("⋮", key=f"menu_{chat_key}", help="Chat options"):
-                                st.session_state.dropdown_open[chat_key] = not st.session_state.dropdown_open.get(chat_key, False)
-                                st.rerun()
-                        
-                        # Dropdown menu
-                        if st.session_state.dropdown_open.get(chat_key, False):
-                            with st.container():
-                                subcol1, subcol2 = st.columns(2)
-                                with subcol1:
-                                    if st.button("📝", key=f"edit_{chat_key}", help="Rename chat"):
-                                        st.session_state.editing_chat = chat_key
-                                        st.session_state.dropdown_open[chat_key] = False
+                if is_editing:
+                    # Rename mode
+                    col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
+                    with col1:
+                        new_name = st.text_input(
+                            "", 
+                            value=chat_key, 
+                            key=f"rename_{chat_key}",
+                            label_visibility="collapsed"
+                        )
+                    with col2:
+                        if st.button("✓", key=f"confirm_{chat_key}", help="Confirm rename"):
+                            if new_name and new_name != chat_key and new_name not in st.session_state.chats:
+                                st.session_state.chats[new_name] = st.session_state.chats.pop(chat_key)
+                                if st.session_state.active == chat_key:
+                                    st.session_state.active = new_name
+                            st.session_state.editing_chat = None
+                            st.rerun()
+                    with col3:
+                        if st.button("✕", key=f"cancel_{chat_key}", help="Cancel rename"):
+                            st.session_state.editing_chat = None
+                            st.rerun()
+                else:
+                    # Normal mode
+                    col1, col2 = st.columns([0.85, 0.15])
+                    
+                    with col1:
+                        # Chat selection button
+                        button_type = "primary" if is_active else "secondary"
+                        if st.button(
+                            chat_key, 
+                            key=f"select_{chat_key}",
+                            help=f"Switch to {chat_key}",
+                            use_container_width=True,
+                            type=button_type
+                        ):
+                            st.session_state.active = chat_key
+                            st.session_state.editing_chat = None
+                            st.rerun()
+                    
+                    with col2:
+                        # Three dots menu
+                        if st.button("⋮", key=f"menu_{chat_key}", help="Chat options"):
+                            st.session_state.dropdown_open[chat_key] = not st.session_state.dropdown_open.get(chat_key, False)
+                            st.rerun()
+                    
+                    # Dropdown menu
+                    if st.session_state.dropdown_open.get(chat_key, False):
+                        with st.container():
+                            subcol1, subcol2 = st.columns(2)
+                            with subcol1:
+                                if st.button("✏️", key=f"edit_{chat_key}", help="Rename chat"):
+                                    st.session_state.editing_chat = chat_key
+                                    st.session_state.dropdown_open[chat_key] = False
+                                    st.rerun()
+                            with subcol2:
+                                if st.button("🗑️", key=f"delete_{chat_key}", help="Delete chat"):
+                                    if len(st.session_state.chats) > 1:
+                                        del st.session_state.chats[chat_key]
+                                        if st.session_state.active == chat_key:
+                                            st.session_state.active = next(iter(st.session_state.chats))
+                                        st.session_state.dropdown_open.pop(chat_key, None)
+                                        if st.session_state.editing_chat == chat_key:
+                                            st.session_state.editing_chat = None
                                         st.rerun()
-                                with subcol2:
-                                    if st.button("🗑️", key=f"delete_{chat_key}", help="Delete chat"):
-                                        if len(st.session_state.chats) > 1:
-                                            del st.session_state.chats[chat_key]
-                                            if st.session_state.active == chat_key:
-                                                st.session_state.active = next(iter(st.session_state.chats))
-                                            st.session_state.dropdown_open.pop(chat_key, None)
-                                            if st.session_state.editing_chat == chat_key:
-                                                st.session_state.editing_chat = None
-                                            st.rerun()
 
 # --- Main Chat Area ---
 st.title("💼 HireScope Chat")
