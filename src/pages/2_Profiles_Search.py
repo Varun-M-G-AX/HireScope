@@ -89,7 +89,7 @@ div[data-testid="stContainer"] {
     background: var(--bg-primary);
     border: 1px solid var(--border-color) !important;
     border-radius: var(--radius-lg) !important;
-    padding: 1.5rem !important;
+    padding: 1.25rem !important;
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-sm);
     transition: all 0.2s ease;
@@ -109,46 +109,95 @@ div[data-testid="stContainer"]::before {
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
+    height: 3px;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 }
 
-/* Avatar styling */
+/* Better spacing for card content */
+div[data-testid="stContainer"] > div {
+    margin-bottom: 0.75rem !important;
+}
+
+div[data-testid="stContainer"] > div:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Avatar styling - updated for compact layout */
 .avatar-circle {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 600;
-    border: 3px solid var(--bg-primary);
-    box-shadow: var(--shadow-md);
-    margin: 0 auto;
+    border: 2px solid var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    margin: 0;
 }
 
-/* Streamlit image styling within containers */
+/* Streamlit image styling within containers - compact version */
 div[data-testid="stContainer"] img {
     border-radius: 50%;
-    border: 3px solid var(--bg-primary);
-    box-shadow: var(--shadow-md);
+    border: 2px solid var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    object-fit: cover;
 }
 
-/* Typography improvements */
+/* Typography improvements for card content */
 div[data-testid="stContainer"] h1, 
 div[data-testid="stContainer"] h2, 
 div[data-testid="stContainer"] h3,
 div[data-testid="stContainer"] h4 {
     color: var(--text-primary) !important;
     margin-bottom: 0.5rem !important;
+    margin-top: 0 !important;
+}
+
+div[data-testid="stContainer"] h3 {
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
 }
 
 div[data-testid="stContainer"] p {
     color: var(--text-secondary) !important;
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+    font-size: 0.9rem !important;
+    line-height: 1.4 !important;
+}
+
+/* Code styling for candidate ID */
+div[data-testid="stContainer"] code {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    padding: 0.2rem 0.4rem !important;
+    border-radius: 4px !important;
+    font-size: 0.85rem !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Divider styling within cards */
+div[data-testid="stContainer"] hr {
+    border: none !important;
+    border-top: 1px solid var(--border-color) !important;
+    margin: 0.75rem 0 !important;
+    opacity: 0.7 !important;
+}
+
+/* Contact links styling */
+div[data-testid="stContainer"] a {
+    color: var(--primary-color) !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+}
+
+div[data-testid="stContainer"] a:hover {
+    text-decoration: underline !important;
+    color: var(--secondary-color) !important;
 }
 
 /* Button styling - keeping for reference but using Streamlit native styling above */
@@ -213,40 +262,53 @@ div[data-testid="stContainer"] .stButton > button {
     border-radius: var(--radius-md) !important;
     font-weight: 500 !important;
     font-size: 0.875rem !important;
-    padding: 0.75rem 1rem !important;
+    padding: 0.625rem 1rem !important;
     transition: all 0.2s ease !important;
     width: 100% !important;
     margin-bottom: 0 !important;
+    height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 div[data-testid="stContainer"] .stButton > button:hover {
     transform: translateY(-1px) !important;
-    box-shadow: var(--shadow-md) !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+    background: linear-gradient(135deg, #5a67d8, #6b46c1) !important;
 }
 
 div[data-testid="stContainer"] .stButton > button[kind="secondary"] {
-    background: var(--danger-color) !important;
-    color: white !important;
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
 }
 
 div[data-testid="stContainer"] .stButton > button[kind="secondary"]:hover {
-    background: #dc2626 !important;
+    background: var(--danger-color) !important;
+    color: white !important;
+    border-color: var(--danger-color) !important;
     transform: translateY(-1px) !important;
-    box-shadow: var(--shadow-md) !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
 }
 
-/* Remove button container margins within bordered containers */
+/* Remove button container margins and improve spacing */
 div[data-testid="stContainer"] .stButton {
     margin-bottom: 0 !important;
 }
 
 div[data-testid="stContainer"] .element-container {
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 0.4rem !important;
 }
 
 /* Improve spacing between button columns */
 div[data-testid="stContainer"] .stColumns {
     gap: 0.75rem !important;
+}
+
+div[data-testid="stContainer"] .stColumns > div {
+    padding-left: 0.375rem !important;
+    padding-right: 0.375rem !important;
 }
 
 /* Summary modal */
@@ -517,33 +579,32 @@ for idx, (meta, doc) in enumerate(filtered_candidates):
 
     col = cols[idx % len(cols)]
     with col:
-        # Create enhanced candidate card with all content inside
+        # Create enhanced candidate card with professional layout
         with st.container(border=True):
             # Format upload date properly
             display_date = upload_date if upload_date and upload_date != "N/A" else "Date not available"
             
-            # Header section with avatar and basic info
-            header_col1, header_col2 = st.columns([1, 4])
+            # Main card header with avatar and name
+            avatar_col, info_col = st.columns([1, 5])
             
-            with header_col1:
+            with avatar_col:
                 if avatar_url:
-                    st.image(avatar_url, width=64)
+                    st.image(avatar_url, width=56)
                 else:
                     st.markdown(f"""
-                    <div class="avatar-circle">{initials}</div>
+                    <div class="avatar-circle" style="width: 56px; height: 56px; font-size: 1.2rem;">{initials}</div>
                     """, unsafe_allow_html=True)
             
-            with header_col2:
-                st.markdown(f"**{name}**")
-                st.caption(f"ID: {candidate_id}")
-                st.caption(f"👨‍💼 Uploaded by **{uploaded_by}**")
-                st.caption(f"📅 {display_date}")
+            with info_col:
+                st.markdown(f"### {name}")
+                st.markdown(f"**ID:** `{candidate_id}`")
+                st.markdown(f"**Uploaded by:** {uploaded_by} • {display_date}")
             
-            # Contact information section
+            # Compact contact information in a clean layout
             if email or phone or linkedin:
-                st.markdown("**Contact Information**")
-                contact_col1, contact_col2 = st.columns([1, 1])
+                st.markdown("---")
                 
+                # Contact info in horizontal layout
                 contact_items = []
                 if email:
                     contact_items.append(f"📧 [{email}](mailto:{email})")
@@ -552,25 +613,15 @@ for idx, (meta, doc) in enumerate(filtered_candidates):
                 if linkedin:
                     contact_items.append(f"🔗 [LinkedIn]({linkedin})")
                 
-                # Split contact items between columns
-                mid_point = len(contact_items) // 2 + len(contact_items) % 2
-                
-                with contact_col1:
-                    for item in contact_items[:mid_point]:
-                        st.markdown(item)
-                
-                with contact_col2:
-                    for item in contact_items[mid_point:]:
-                        st.markdown(item)
-                
-                st.markdown("---")
+                # Display contact info in a single row or wrap naturally
+                st.markdown(" • ".join(contact_items))
             
-            # Action buttons inside the card
-            st.markdown("**Actions**")
-            col1, col2 = st.columns([1, 1])
-            with col1:
+            # Clean action buttons at the bottom
+            st.markdown("---")
+            action_col1, action_col2 = st.columns([1, 1])
+            with action_col1:
                 view_summary = st.button("📄 View Summary", key=f"view_{idx}", use_container_width=True)
-            with col2:
+            with action_col2:
                 delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}", use_container_width=True, type="secondary")
 
             # Summary modal
