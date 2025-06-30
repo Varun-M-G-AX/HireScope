@@ -317,13 +317,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Sidebar Toggle Function ---
-def toggle_sidebar():
-    """Toggle sidebar visibility"""
-    if hasattr(st.session_state, 'sidebar_open'):
-        st.session_state.sidebar_open = not st.session_state.sidebar_open
-    else:
-        st.session_state.sidebar_open = True
+# Add this CSS to make the toggle button work better
+st.markdown("""
+<style>
+.floating-toggle {
+    position: fixed !important;
+    top: 1rem !important;
+    left: 1rem !important;
+    z-index: 999 !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid #ddd !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Show toggle button when sidebar is closed
+if not st.session_state.get('sidebar_open', True):
+    # Create a floating button
+    col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
+    with col1:
+        if st.button("☰", key="open_sidebar", help="Open sidebar"):
+            st.session_state.sidebar_open = True
+            st.rerun()
 
 # Initialize sidebar state
 if 'sidebar_open' not in st.session_state:
