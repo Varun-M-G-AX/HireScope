@@ -370,9 +370,6 @@ if st.session_state.sidebar_open:
         col1, col2 = st.columns([0.8, 0.2])
         with col1:
             st.markdown("### 💼 HireScope")
-        with col2:
-            if st.button("✕", key="close_sidebar", help="Close sidebar"):
-                st.session_state.sidebar_open = False
                 st.rerun()
         
         st.markdown("---")
@@ -468,6 +465,7 @@ if st.session_state.sidebar_open:
                                         st.rerun()
 
 # --- Main Chat Area ---
+st.title("💼 HireScope Chat")
 st.markdown("""
 <div style="
     margin: 1rem 0 2rem 0;
