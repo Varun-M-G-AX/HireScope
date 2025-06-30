@@ -30,6 +30,66 @@ st.markdown("""
 /* Import modern fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* CSS Variables for Theme Support */
+:root {
+    /* Light theme colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --text-primary: #1f2937;
+    --text-secondary: #374151;
+    --text-tertiary: #6b7280;
+    --border-color: #e5e7eb;
+    --border-hover: #d1d5db;
+    --accent-primary: #3b82f6;
+    --accent-secondary: #22c55e;
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-secondary: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme colors - Auto-detected */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --bg-tertiary: #334155;
+        --text-primary: #f1f5f9;
+        --text-secondary: #e2e8f0;
+        --text-tertiary: #94a3b8;
+        --border-color: #475569;
+        --border-hover: #64748b;
+        --accent-primary: #60a5fa;
+        --accent-secondary: #4ade80;
+        --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        --gradient-secondary: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+}
+
+/* Force dark theme for Streamlit dark mode users */
+[data-theme="dark"] {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #e2e8f0;
+    --text-tertiary: #94a3b8;
+    --border-color: #475569;
+    --border-hover: #64748b;
+    --accent-primary: #60a5fa;
+    --accent-secondary: #4ade80;
+    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    --gradient-secondary: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
 /* Global font settings */
 * {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -48,11 +108,21 @@ header[data-testid="stHeader"] {visibility: visible;}
 
 .stMainBlockContainer {padding-top: 1rem;}
 
-/* Improved typography */
+/* Apply theme colors to main elements */
+.stApp {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.main .block-container {
+    background-color: var(--bg-primary);
+}
+
+/* Improved typography with theme support */
 h1, h2, h3 {
     font-weight: 600;
     letter-spacing: -0.025em;
-    color: #1f2937;
+    color: var(--text-primary) !important;
 }
 
 h1 {
@@ -71,40 +141,42 @@ h3 {
     margin-bottom: 0.5rem;
 }
 
-/* Body text improvements */
+/* Body text improvements with theme support */
 p, div, span {
     font-weight: 400;
     line-height: 1.6;
-    color: #374151;
+    color: var(--text-secondary) !important;
 }
 
-/* Button improvements */
+/* Button improvements with theme support */
 .stButton > button {
     font-weight: 500;
     font-size: 0.875rem;
     transition: all 0.2s ease;
     border-radius: 8px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .stButton > button:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
     transform: translateY(-1px);
 }
 
-/* Primary button styling */
+/* Primary button styling with theme support */
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--gradient-primary);
     border: none;
     color: white;
     font-weight: 600;
 }
 
 .stButton > button[kind="primary"]:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    background: var(--gradient-secondary);
+    box-shadow: var(--shadow-lg);
 }
 
 /* Fixed Sidebar Toggle Button - Only visible when sidebar is closed */
@@ -113,13 +185,13 @@ p, div, span {
     top: 1rem !important;
     left: 1rem !important;
     z-index: 9999 !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background: var(--gradient-primary) !important;
     color: white !important;
     border: none !important;
     border-radius: 8px !important;
     padding: 0.75rem !important;
     cursor: pointer !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: var(--shadow-md) !important;
     transition: all 0.2s ease !important;
     font-weight: 600 !important;
     font-size: 1.1rem !important;
@@ -131,9 +203,9 @@ p, div, span {
 }
 
 .sidebar-toggle-fixed:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important;
+    background: var(--gradient-secondary) !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: var(--shadow-lg) !important;
 }
 
 /* Main content adjustment when sidebar is closed */
@@ -142,7 +214,7 @@ p, div, span {
     padding-left: 80px !important;
 }
 
-/* Skeleton loading animation */
+/* Skeleton loading animation with theme support */
 @keyframes skeleton-loading {
     0% {
         background-position: -200px 0;
@@ -166,6 +238,15 @@ p, div, span {
     border-radius: 0.25rem;
 }
 
+@media (prefers-color-scheme: dark) {
+    .skeleton {
+        background: linear-gradient(90deg, 
+            rgba(255, 255, 255, 0.05) 25%, 
+            rgba(255, 255, 255, 0.1) 50%, 
+            rgba(255, 255, 255, 0.05) 75%);
+    }
+}
+
 .skeleton-container {
     padding: 1.5rem;
     margin: 1rem 0;
@@ -174,7 +255,7 @@ p, div, span {
     gap: 0.75rem;
     align-items: flex-start;
     background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(21, 128, 61, 0.05) 100%);
-    border-left: 4px solid #22c55e;
+    border-left: 4px solid var(--accent-secondary);
     border: 1px solid rgba(34, 197, 94, 0.1);
 }
 
@@ -183,12 +264,12 @@ p, div, span {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    background: linear-gradient(135deg, var(--accent-secondary) 0%, #16a34a 100%);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
 }
 
 .skeleton-content {
@@ -237,17 +318,17 @@ p, div, span {
     }
 }
 
-/* Sidebar styling */
+/* Sidebar styling with theme support */
 .stSidebar > div {
     padding-top: 1rem;
-    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    background: var(--bg-secondary);
 }
 
 .stSidebar {
-    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    background: var(--bg-secondary);
 }
 
-/* Chat item styling */
+/* Chat item styling with theme support */
 .chat-item {
     display: flex;
     align-items: center;
@@ -259,18 +340,19 @@ p, div, span {
     transition: all 0.2s ease;
     position: relative;
     border: 1px solid transparent;
+    background-color: var(--bg-primary);
 }
 
 .chat-item:hover {
-    background-color: rgba(255, 255, 255, 0.8);
-    border-color: rgba(156, 163, 175, 0.2);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
 }
 
 .chat-item.active {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-    border-color: rgba(99, 102, 241, 0.2);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-md);
 }
 
 .chat-title {
@@ -281,7 +363,7 @@ p, div, span {
     font-size: 0.875rem;
     font-weight: 500;
     margin-right: 0.5rem;
-    color: #374151;
+    color: var(--text-primary);
 }
 
 .chat-actions {
@@ -305,23 +387,23 @@ p, div, span {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    color: #6b7280;
+    color: var(--text-tertiary);
 }
 
 .icon-button:hover {
-    background-color: rgba(107, 114, 128, 0.1);
-    color: #374151;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
-/* New chat button */
+/* New chat button with theme support */
 .new-chat-btn {
     width: 100%;
     padding: 0.875rem;
     margin-bottom: 1rem;
-    border: 1px solid rgba(156, 163, 175, 0.2);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(249, 250, 251, 0.9) 100%);
-    color: #374151;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -330,17 +412,17 @@ p, div, span {
     transition: all 0.2s ease;
     font-size: 0.875rem;
     font-weight: 500;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-sm);
 }
 
 .new-chat-btn:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(243, 244, 246, 1) 100%);
-    border-color: rgba(156, 163, 175, 0.3);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: var(--bg-tertiary);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
     transform: translateY(-1px);
 }
 
-/* Message styling */
+/* Message styling with theme support */
 .message {
     padding: 1.5rem;
     margin: 1rem 0;
@@ -348,18 +430,19 @@ p, div, span {
     display: flex;
     gap: 1rem;
     align-items: flex-start;
-    border: 1px solid rgba(229, 231, 235, 0.5);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    background-color: var(--bg-primary);
 }
 
 .message.user {
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(29, 78, 216, 0.05) 100%);
-    border-left: 4px solid #3b82f6;
+    border-left: 4px solid var(--accent-primary);
 }
 
 .message.assistant {
     background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(21, 128, 61, 0.05) 100%);
-    border-left: 4px solid #22c55e;
+    border-left: 4px solid var(--accent-secondary);
 }
 
 .message-icon {
@@ -371,16 +454,16 @@ p, div, span {
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
 }
 
 .message.user .message-icon {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    background: linear-gradient(135deg, var(--accent-primary) 0%, #1d4ed8 100%);
     color: white;
 }
 
 .message.assistant .message-icon {
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    background: linear-gradient(135deg, var(--accent-secondary) 0%, #16a34a 100%);
     color: white;
 }
 
@@ -388,21 +471,22 @@ p, div, span {
     flex: 1;
     line-height: 1.7;
     font-size: 0.925rem;
+    color: var(--text-secondary);
 }
 
 .message-content strong {
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text-primary);
 }
 
-/* Rename input styling */
+/* Rename input styling with theme support */
 .rename-input {
     width: 100%;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(156, 163, 175, 0.3);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     padding: 0.375rem 0.75rem;
-    color: #374151;
+    color: var(--text-primary);
     font-size: 0.875rem;
     font-weight: 500;
     transition: all 0.2s ease;
@@ -410,9 +494,64 @@ p, div, span {
 
 .rename-input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    background: rgba(255, 255, 255, 1);
+    background: var(--bg-primary);
+}
+
+/* Sidebar toggle button styling with theme support */
+.sidebar-toggle-btn {
+    background: var(--gradient-primary) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0.625rem !important;
+    cursor: pointer !important;
+    box-shadow: var(--shadow-md) !important;
+    transition: all 0.2s ease !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    font-size: 0.875rem !important;
+}
+
+.sidebar-toggle-btn:hover {
+    background: var(--gradient-secondary) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* Input styling improvements with theme support */
+.stTextInput > div > div > input {
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.875rem !important;
+    transition: all 0.2s ease !important;
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Chat input styling with theme support */
+.stChatInput > div {
+    border-radius: 12px !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-md) !important;
+    background: var(--bg-primary) !important;
+}
+
+.stChatInput input {
+    font-size: 0.925rem !important;
+    font-weight: 400 !important;
+    padding: 1rem !important;
+    color: var(--text-primary) !important;
+    background: var(--bg-primary) !important;
 }
 
 /* Responsive design */
@@ -437,58 +576,143 @@ p, div, span {
     .message-content {
         font-size: 0.875rem;
     }
+    
+    .sidebar-toggle-fixed {
+        top: 0.5rem !important;
+        left: 0.5rem !important;
+        padding: 0.5rem !important;
+        font-size: 1rem !important;
+    }
 }
 
-/* Sidebar toggle button styling */
-.sidebar-toggle-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    color: white !important;
-    border: none !important;
+/* Enhanced scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-hover);
+}
+
+/* Footer styling */
+hr {
+    border: none;
+    height: 1px;
+    background: var(--border-color);
+    margin: 2rem 0 1rem 0;
+}
+
+/* Additional animations and micro-interactions */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.message {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.chat-item {
+    animation: slideIn 0.2s ease-out;
+}
+
+/* Improved focus states */
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+/* Better selection colors */
+::selection {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--text-primary);
+}
+
+/* Loading state improvements */
+.stSpinner > div {
+    border-color: var(--accent-primary) !important;
+}
+
+/* Improved toast/notification styling */
+.stAlert {
     border-radius: 8px !important;
-    padding: 0.625rem !important;
-    cursor: pointer !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-    transition: all 0.2s ease !important;
-    font-weight: 600 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 0.5rem !important;
-    font-size: 0.875rem !important;
+    border: 1px solid var(--border-color) !important;
+    background: var(--bg-secondary) !important;
 }
 
-.sidebar-toggle-btn:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15) !important;
+/* Enhanced markdown content styling */
+.stMarkdown {
+    color: var(--text-secondary) !important;
 }
 
-/* Input styling improvements */
-.stTextInput > div > div > input {
+.stMarkdown h1, .stMarkdown h2, .stMarkdown h3, 
+.stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+    color: var(--text-primary) !important;
+}
+
+.stMarkdown code {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    padding: 0.2rem 0.4rem !important;
+}
+
+.stMarkdown pre {
+    background: var(--bg-tertiary) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 8px !important;
-    border: 1px solid #e5e7eb !important;
-    padding: 0.75rem 1rem !important;
-    font-size: 0.875rem !important;
-    transition: all 0.2s ease !important;
-    background: #ffffff !important;
 }
 
-.stTextInput > div > div > input:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+/* Streamlit specific dark mode overrides */
+.stApp[data-theme="dark"] {
+    background-color: var(--bg-primary) !important;
 }
 
-/* Chat input styling */
-.stChatInput > div {
-    border-radius: 12px !important;
-    border: 1px solid #e5e7eb !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+.stApp[data-theme="dark"] .main .block-container {
+    background-color: var(--bg-primary) !important;
 }
 
-.stChatInput input {
-    font-size: 0.925rem !important;
-    font-weight: 400 !important;
-    padding: 1rem !important;
-}
+/* Better mobile experience */
+@media (max-width: 480px) {
+    .main-content-adjusted {
+        padding-left: 50px !important;
+    }
+    
+    .sidebar-toggle-fixed {
+        padding: 0.5rem !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+    }
+    
+    .message {
+        padding: 1rem !important;
+        gap: 0.75rem !important;
+    }
+    
+    .message-icon {
+        width: 2rem !important;
+        height: 2rem !important;
+    }
+    
+    h1 {
+        font-size: 1.75rem !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -498,6 +722,38 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded" if st.session_state.sidebar_open else "collapsed"
 )
+
+# --- Theme Detection Script ---
+theme_script = """
+<script>
+// Theme detection and CSS variable updates
+function updateTheme() {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const streamlitIsDark = window.parent.document.querySelector('[data-theme="dark"]') !== null;
+    
+    if (isDark || streamlitIsDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+    }
+}
+
+// Update theme on load
+updateTheme();
+
+// Listen for theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+
+// Also check for Streamlit theme changes
+const observer = new MutationObserver(updateTheme);
+observer.observe(window.parent.document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
+});
+</script>
+"""
+
+st.markdown(theme_script, unsafe_allow_html=True)
 
 # --- Helper Functions ---
 def generate_chat_title(content):
@@ -583,7 +839,7 @@ if st.session_state.sidebar_open:
                 
                 if is_editing:
                     # Rename mode
-                    col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
+                    col1, col2 = st.columns([0.85, 0.15])
                     with col1:
                         new_name = st.text_input(
                             "", 
@@ -597,10 +853,6 @@ if st.session_state.sidebar_open:
                                 st.session_state.chats[new_name] = st.session_state.chats.pop(chat_key)
                                 if st.session_state.active == chat_key:
                                     st.session_state.active = new_name
-                            st.session_state.editing_chat = None
-                            st.rerun()
-                    with col3:
-                        if st.button("✕", key=f"cancel_{chat_key}", help="Cancel rename"):
                             st.session_state.editing_chat = None
                             st.rerun()
                 else:
@@ -648,7 +900,34 @@ if st.session_state.sidebar_open:
                                         st.rerun()
 
 # --- Main Chat Area ---
-st.title("💼 HireScope Chat")
+# Enhanced title with gradient and better typography
+st.markdown("""
+<div style="
+    margin: 1rem 0 2rem 0;
+    padding: 0;
+">
+    <h1 style="
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.05em;
+        margin: 0;
+        padding: 0;
+        text-align: left;
+        line-height: 1.1;
+    ">💼 HireScope Chat</h1>
+    <p style="
+        color: var(--text-tertiary);
+        font-size: 1.1rem;
+        font-weight: 400;
+        margin: 0.5rem 0 0 0;
+        letter-spacing: 0.01em;
+    ">AI-Powered Recruitment Assistant</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Get active chat
 active_key = st.session_state.active
@@ -773,11 +1052,22 @@ Be helpful, professional, and provide specific information from the resumes when
 if not st.session_state.sidebar_open:
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Footer
+# Footer with better styling
 st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: #666; font-size: 0.8rem;'>"
-    "HireScope Chat - AI-Powered Recruitment Assistant"
-    "</div>", 
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div style="
+    text-align: center; 
+    color: var(--text-tertiary); 
+    font-size: 0.875rem;
+    font-weight: 400;
+    padding: 1rem 0;
+    margin-top: 2rem;
+    letter-spacing: 0.02em;
+">
+    <strong style="color: var(--text-secondary); font-weight: 600;">HireScope Chat</strong> 
+    <span style="margin: 0 0.5rem;">•</span>
+    AI-Powered Recruitment Assistant
+    <span style="margin: 0 0.5rem;">•</span>
+    Built with ❤️ using Streamlit
+</div>
+""", unsafe_allow_html=True)
