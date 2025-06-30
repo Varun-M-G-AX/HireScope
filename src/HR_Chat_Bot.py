@@ -368,46 +368,35 @@ if "is_generating" not in st.session_state:
 
 # --- Sidebar Toggle Button (when sidebar is closed) ---
 if not st.session_state.sidebar_open:
-    # Create the toggle button using HTML/JavaScript for better control
-    st.markdown(f"""
-    <div id="sidebar-toggle-container">
-        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
-            {ICONS['menu']}
-        </button>
-    </div>
-    
-    <script>
-    function toggleSidebar() {{
-        // Find the button in Streamlit and click it
-        const buttons = parent.document.querySelectorAll('button[kind="secondary"]');
-        const toggleBtn = Array.from(buttons).find(btn => btn.textContent.includes('Open Sidebar'));
-        if (toggleBtn) toggleBtn.click();
-    }}
-    </script>
+    with st.container():
+        col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
+        with col1:
+            if st.button("☰", key="toggle_sidebar_open", help="Open sidebar"):
+                st.session_state.sidebar_open = True
+                st.rerun()
+
+    # Optional floating style for toggle button
+    st.markdown("""
+    <style>
+    .element-container:has(#toggle_sidebar_open) button {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 1000;
+        background-color: #1c83e1;
+        color: white;
+        border-radius: 8px;
+        padding: 0.5rem 0.8rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border: none;
+        font-size: 1.2rem;
+        font-weight: bold;
+        min-width: 44px;
+        min-height: 44px;
+    }
+    </style>
     """, unsafe_allow_html=True)
-    
-    # Hidden Streamlit button that actually handles the state change
-    if st.button("Open Sidebar", key="hidden_open_sidebar_btn", help="Open sidebar"):
-        st.session_state.sidebar_open = True
-        st.rerun()
 
-# --- Additional CSS for the toggle button ---
-st.markdown("""
-<style>
-/* Hide the hidden button */
-button[kind="secondary"]:has-text("Open Sidebar") {
-    display: none !important;
-}
-
-/* Style for the custom toggle button container */
-#sidebar-toggle-container {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 9999;
-}
-</style>
-""", unsafe_allow_html=True)
 # --- Sidebar ---
 if st.session_state.sidebar_open:
     with st.sidebar:
@@ -437,6 +426,7 @@ if st.session_state.sidebar_open:
             st.rerun()
         
         st.markdown("---")
+
         
         # Chat History
         if st.session_state.chats:
