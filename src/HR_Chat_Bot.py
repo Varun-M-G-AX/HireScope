@@ -18,19 +18,24 @@ ICONS = {
     "x": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708'/></svg>""",
     "robot": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5'/><path d='M3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.6 26.6 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.93.93 0 0 1-.765.935c-.845.147-2.34.346-4.235.346s-3.39-.2-4.235-.346A.93.93 0 0 1 3 9.219zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a25 25 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25 25 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135'/><path d='M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2zM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5'/></svg>""",
     "person": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z'/></svg>""",
-    "menu": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5'/></svg>"""
+    "menu": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5'/></svg>""",
+    "chevron_right": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path fill-rule='evenodd' d='M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708'/></svg>""",
+    "chevron_left": """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path fill-rule='evenodd' d='M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0'/></svg>"""
 }
 
 # --- Custom CSS for Modern UI ---
 st.markdown("""
 <style>
-/* Hide default Streamlit elements */
+/* Hide default Streamlit elements but keep system settings */
 .stDeployButton {display: none;}
-header[data-testid="stHeader"] {display: none;}
+#MainMenu {visibility: visible !important;}
+footer {visibility: visible;}
+header[data-testid="stHeader"] {visibility: visible;}
+
 .stMainBlockContainer {padding-top: 1rem;}
 
-/* Fixed Sidebar Toggle Button - Always visible */
-.sidebar-toggle {
+/* Fixed Sidebar Toggle Button - Only visible when sidebar is closed */
+.sidebar-toggle-fixed {
     position: fixed !important;
     top: 1rem !important;
     left: 1rem !important;
@@ -52,7 +57,7 @@ header[data-testid="stHeader"] {display: none;}
     justify-content: center !important;
 }
 
-.sidebar-toggle:hover {
+.sidebar-toggle-fixed:hover {
     background: #0d6efd !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
@@ -64,15 +69,6 @@ header[data-testid="stHeader"] {display: none;}
     padding-left: 80px !important;
 }
 
-/* When sidebar is open, hide the fixed toggle and adjust main content */
-.sidebar-open .sidebar-toggle {
-    display: none !important;
-}
-
-.sidebar-open .main-content-adjusted {
-    padding-left: 1rem !important;
-}
-
 /* Skeleton loading animation */
 @keyframes skeleton-loading {
     0% {
@@ -82,6 +78,7 @@ header[data-testid="stHeader"] {display: none;}
         background-position: calc(200px + 100%) 0;
     }
 }
+
 .skeleton {
     display: inline-block;
     height: 1em;
@@ -95,6 +92,7 @@ header[data-testid="stHeader"] {display: none;}
     animation: skeleton-loading 1.5s infinite;
     border-radius: 0.25rem;
 }
+
 .skeleton-container {
     padding: 1rem;
     margin: 1rem 0;
@@ -105,6 +103,7 @@ header[data-testid="stHeader"] {display: none;}
     background: rgba(40, 167, 69, 0.1);
     border-left: 3px solid #28a745;
 }
+
 .skeleton-icon {
     flex-shrink: 0;
     width: 2rem;
@@ -116,17 +115,21 @@ header[data-testid="stHeader"] {display: none;}
     align-items: center;
     justify-content: center;
 }
+
 .skeleton-content {
     flex: 1;
     line-height: 1.6;
 }
+
 .skeleton-line {
     margin: 0.5rem 0;
 }
+
 .skeleton-line:nth-child(1) { width: 90%; }
 .skeleton-line:nth-child(2) { width: 85%; }
 .skeleton-line:nth-child(3) { width: 70%; }
 .skeleton-line:nth-child(4) { width: 95%; }
+
 /* Thinking dots animation */
 .thinking-dots {
     display: inline-flex;
@@ -134,6 +137,7 @@ header[data-testid="stHeader"] {display: none;}
     align-items: center;
     margin-left: 0.5rem;
 }
+
 .thinking-dot {
     width: 0.375rem;
     height: 0.375rem;
@@ -142,9 +146,11 @@ header[data-testid="stHeader"] {display: none;}
     opacity: 0.4;
     animation: thinking 1.4s infinite ease-in-out;
 }
+
 .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
 .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
 .thinking-dot:nth-child(3) { animation-delay: 0; }
+
 @keyframes thinking {
     0%, 80%, 100% {
         opacity: 0.4;
@@ -155,10 +161,12 @@ header[data-testid="stHeader"] {display: none;}
         transform: scale(1.2);
     }
 }
+
 /* Sidebar styling */
 .stSidebar > div {
     padding-top: 1rem;
 }
+
 /* Chat item styling */
 .chat-item {
     display: flex;
@@ -171,12 +179,15 @@ header[data-testid="stHeader"] {display: none;}
     transition: background-color 0.2s ease;
     position: relative;
 }
+
 .chat-item:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
+
 .chat-item.active {
     background-color: rgba(255, 255, 255, 0.15);
 }
+
 .chat-title {
     flex: 1;
     text-overflow: ellipsis;
@@ -185,15 +196,18 @@ header[data-testid="stHeader"] {display: none;}
     font-size: 0.9rem;
     margin-right: 0.5rem;
 }
+
 .chat-actions {
     display: flex;
     gap: 0.25rem;
     opacity: 0;
     transition: opacity 0.2s ease;
 }
+
 .chat-item:hover .chat-actions {
     opacity: 1;
 }
+
 .icon-button {
     background: none;
     border: none;
@@ -205,9 +219,11 @@ header[data-testid="stHeader"] {display: none;}
     justify-content: center;
     transition: background-color 0.2s ease;
 }
+
 .icon-button:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
+
 /* New chat button */
 .new-chat-btn {
     width: 100%;
@@ -225,10 +241,12 @@ header[data-testid="stHeader"] {display: none;}
     transition: all 0.2s ease;
     font-size: 0.9rem;
 }
+
 .new-chat-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
 }
+
 /* Message styling */
 .message {
     padding: 1rem;
@@ -238,14 +256,17 @@ header[data-testid="stHeader"] {display: none;}
     gap: 0.75rem;
     align-items: flex-start;
 }
+
 .message.user {
     background: rgba(0, 123, 255, 0.1);
     border-left: 3px solid #007bff;
 }
+
 .message.assistant {
     background: rgba(40, 167, 69, 0.1);
     border-left: 3px solid #28a745;
 }
+
 .message-icon {
     flex-shrink: 0;
     width: 2rem;
@@ -256,18 +277,22 @@ header[data-testid="stHeader"] {display: none;}
     justify-content: center;
     font-weight: bold;
 }
+
 .message.user .message-icon {
     background: #007bff;
     color: white;
 }
+
 .message.assistant .message-icon {
     background: #28a745;
     color: white;
 }
+
 .message-content {
     flex: 1;
     line-height: 1.6;
 }
+
 /* Rename input styling */
 .rename-input {
     width: 100%;
@@ -278,11 +303,13 @@ header[data-testid="stHeader"] {display: none;}
     color: inherit;
     font-size: 0.9rem;
 }
+
 .rename-input:focus {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
 }
+
 /* Responsive design */
 @media (max-width: 768px) {
     .message {
@@ -298,11 +325,28 @@ header[data-testid="stHeader"] {display: none;}
         padding-left: 60px !important;
     }
 }
-/* Hide Streamlit's settings menu */
-.stApp > header {visibility: visible;}
-.stDecoration {visibility: hidden;}
-#MainMenu {visibility: visible;}
-footer {visibility: hidden;}
+
+/* Sidebar toggle button styling */
+.sidebar-toggle-btn {
+    background: #1c83e1 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0.5rem !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.2s ease !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+.sidebar-toggle-btn:hover {
+    background: #0d6efd !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -312,14 +356,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded" if st.session_state.sidebar_open else "collapsed"
 )
-
-# --- Add CSS class to body based on sidebar state ---
-sidebar_class = "sidebar-open" if st.session_state.sidebar_open else "sidebar-closed"
-st.markdown(f"""
-<script>
-document.body.className = '{sidebar_class}';
-</script>
-""", unsafe_allow_html=True)
 
 # --- Helper Functions ---
 def generate_chat_title(content):
@@ -351,25 +387,19 @@ if "dropdown_open" not in st.session_state:
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
 
-# --- Fixed Sidebar Toggle Button (Always Visible When Sidebar is Closed) ---
+# --- Sidebar Toggle Button in Main Content (when sidebar is closed) ---
 if not st.session_state.sidebar_open:
-    st.markdown("""
-    <button class="sidebar-toggle" onclick="toggleSidebar()" title="Open Sidebar">
-        ☰
-    </button>
-    <script>
-    function toggleSidebar() {
-        // Find the button that toggles sidebar
-        const buttons = parent.document.querySelectorAll('button');
-        for (let button of buttons) {
-            if (button.textContent.includes('☰') && button.id && button.id.includes('toggle_sidebar')) {
-                button.click();
-                break;
-            }
-        }
-    }
-    </script>
-    """, unsafe_allow_html=True)
+    # Create a container at the top for the toggle button
+    toggle_container = st.container()
+    with toggle_container:
+        col1, col2 = st.columns([0.1, 0.9])
+        with col1:
+            if st.button("☰", key="open_sidebar_btn", help="Open Sidebar", type="primary"):
+                st.session_state.sidebar_open = True
+                st.rerun()
+    
+    # Add CSS to make the main content area have proper spacing
+    st.markdown('<div class="main-content-adjusted">', unsafe_allow_html=True)
 
 # --- Sidebar ---
 if st.session_state.sidebar_open:
@@ -474,21 +504,6 @@ if st.session_state.sidebar_open:
                                         if st.session_state.editing_chat == chat_key:
                                             st.session_state.editing_chat = None
                                         st.rerun()
-else:
-    # Add a hidden button that can be triggered by the JavaScript
-    if st.button("☰", key="toggle_sidebar_open", help="Open sidebar", 
-                 type="primary", use_container_width=False):
-        st.session_state.sidebar_open = True
-        st.rerun()
-    
-    # Hide the button with CSS since we're using the fixed positioned one
-    st.markdown("""
-    <style>
-    .element-container:has(#toggle_sidebar_open) {
-        display: none !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
 # --- Main Chat Area ---
 st.title("💼 HireScope Chat")
@@ -583,9 +598,7 @@ if st.session_state.is_generating:
             
             # Update system message with context
             chat[0]["content"] = f"""You are a recruiter assistant. Answer ONLY from these résumé snippets:
-
 {context}
-
 Be helpful, professional, and provide specific information from the resumes when available."""
             
             # Get AI response
@@ -613,6 +626,10 @@ Be helpful, professional, and provide specific information from the resumes when
     # Reset generating state
     st.session_state.is_generating = False
     st.rerun()
+
+# Close the main content div if sidebar is closed
+if not st.session_state.sidebar_open:
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
