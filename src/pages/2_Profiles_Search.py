@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+from datetime import datetime
 from utils import collection, chroma_client
 
 st.set_page_config(
@@ -582,7 +583,28 @@ for idx, (meta, doc) in enumerate(filtered_candidates):
         # Create enhanced candidate card with professional layout
         with st.container(border=True):
             # Format upload date properly
-            display_date = upload_date if upload_date and upload_date != "N/A" else "Date not available"
+            display_date = "Date not available"
+            if upload_date and upload_date != "N/A":
+                try:
+                    # Try to parse different date formats
+                    if isinstance(upload_date, str):
+                        # Handle common date formats
+                        for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d %H:%M"]:
+                            try:
+                                parsed_date = datetime.strptime(upload_date, fmt)
+                                display_date = parsed_date.strftime("%B %d, %Y")
+                                break
+                            except ValueError:
+                                continue
+                        else:
+                            # If no format matches, use the original string
+                            display_date = upload_date
+                    else:
+                        # If it's already a datetime object
+                        display_date = upload_date.strftime("%B %d, %Y")
+                except:
+                    # Fallback to original value if parsing fails
+                    display_date = str(upload_date)
             
             # Main card header with avatar and name
             avatar_col, info_col = st.columns([1, 5])
