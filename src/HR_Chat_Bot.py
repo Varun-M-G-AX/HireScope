@@ -314,6 +314,32 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Initialize sidebar state
+if 'sidebar_open' not in st.session_state:
+    st.session_state.sidebar_open = True
+
+# --- CSS for Floating Sidebar Toggle ---
+st.markdown("""
+<style>
+.floating-toggle {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 999;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: black;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # Add this CSS to make the toggle button work better
 st.markdown("""
 <style>
@@ -330,6 +356,17 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
+
+# Floating button to open sidebar when it's closed
+if not st.session_state.sidebar_open:
+    st.markdown("""
+    <div class="floating-toggle" onclick="document.getElementById('open_sidebar_btn').click()">☰</div>
+    """, unsafe_allow_html=True)
+
+    if st.button("Open Sidebar", key="open_sidebar_btn"):
+        st.session_state.sidebar_open = True
+        st.rerun()
+
 
 # Show toggle button when sidebar is closed
 if not st.session_state.get('sidebar_open', True):
