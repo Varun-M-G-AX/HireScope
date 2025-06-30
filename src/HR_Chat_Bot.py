@@ -468,7 +468,33 @@ if st.session_state.sidebar_open:
                                         st.rerun()
 
 # --- Main Chat Area ---
-st.title("💼 HireScope Chat")
+st.markdown("""
+<div style="
+    margin: 1rem 0 2rem 0;
+    padding: 0;
+">
+    <h1 style="
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.05em;
+        margin: 0;
+        padding: 0;
+        text-align: left;
+        line-height: 1.1;
+    ">💼 HireScope Chat</h1>
+    <p style="
+        color: var(--text-tertiary);
+        font-size: 1.1rem;
+        font-weight: 400;
+        margin: 0.5rem 0 0 0;
+        letter-spacing: 0.01em;
+    ">AI-Powered Recruitment Assistant</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Get active chat
 active_key = st.session_state.active
