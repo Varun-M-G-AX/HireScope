@@ -106,7 +106,36 @@ code, pre, .stCode {
 footer {visibility: visible;}
 header[data-testid="stHeader"] {visibility: visible;}
 
-.stMainBlockContainer {padding-top: 1rem;}
+/* Fix Streamlit layout issues */
+.stMainBlockContainer {
+    padding-top: 1rem;
+    max-width: none !important;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* Remove unwanted Streamlit margins and padding */
+.block-container {
+    padding-top: 1rem !important;
+    max-width: none !important;
+}
+
+/* Fix sidebar width and spacing */
+.stSidebar .block-container {
+    padding-top: 2rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+/* Remove Streamlit's default spacing */
+.element-container {
+    margin-bottom: 0 !important;
+}
+
+/* Fix button spacing */
+.stButton {
+    margin-bottom: 0.5rem !important;
+}
 
 /* Apply theme colors to main elements */
 .stApp {
@@ -247,16 +276,35 @@ p, div, span {
     }
 }
 
+/* Better loading states and animations */
 .skeleton-container {
     padding: 1.5rem;
-    margin: 1rem 0;
+    margin: 1.5rem 0;
     border-radius: 12px;
     display: flex;
-    gap: 0.75rem;
+    gap: 1rem;
     align-items: flex-start;
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(21, 128, 61, 0.05) 100%);
-    border-left: 4px solid var(--accent-secondary);
-    border: 1px solid rgba(34, 197, 94, 0.1);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(21, 128, 61, 0.02) 100%);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.skeleton-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent-secondary);
+    opacity: 0.8;
+}
+
+.skeleton-container:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .skeleton-icon {
@@ -318,14 +366,50 @@ p, div, span {
     }
 }
 
-/* Sidebar styling with theme support */
+/* Enhanced sidebar styling with better spacing */
 .stSidebar > div {
     padding-top: 1rem;
     background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
 }
 
 .stSidebar {
     background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+}
+
+/* Fix sidebar button spacing */
+.stSidebar .stButton {
+    margin-bottom: 0.75rem !important;
+}
+
+.stSidebar .stButton > button {
+    width: 100% !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem !important;
+    font-weight: 500 !important;
+    padding: 0.75rem 1rem !important;
+}
+
+/* Sidebar header improvements */
+.stSidebar h3 {
+    margin-bottom: 1rem !important;
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+}
+
+/* Better sidebar section dividers */
+.stSidebar hr {
+    margin: 1.5rem 0 !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Sidebar text improvements */
+.stSidebar .stMarkdown p {
+    margin-bottom: 0.5rem !important;
+    font-weight: 500 !important;
+    color: var(--text-secondary) !important;
 }
 
 /* Chat item styling with theme support */
@@ -422,10 +506,10 @@ p, div, span {
     transform: translateY(-1px);
 }
 
-/* Message styling with theme support */
+/* Enhanced message styling with better spacing and readability */
 .message {
     padding: 1.5rem;
-    margin: 1rem 0;
+    margin: 1.5rem 0;
     border-radius: 12px;
     display: flex;
     gap: 1rem;
@@ -433,16 +517,43 @@ p, div, span {
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
     background-color: var(--bg-primary);
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent-primary);
+    opacity: 0.8;
 }
 
 .message.user {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(29, 78, 216, 0.05) 100%);
-    border-left: 4px solid var(--accent-primary);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(29, 78, 216, 0.02) 100%);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.message.user::before {
+    background: var(--accent-primary);
 }
 
 .message.assistant {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(21, 128, 61, 0.05) 100%);
-    border-left: 4px solid var(--accent-secondary);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(21, 128, 61, 0.02) 100%);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.message.assistant::before {
+    background: var(--accent-secondary);
+}
+
+.message:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .message-icon {
@@ -467,16 +578,62 @@ p, div, span {
     color: white;
 }
 
+/* Improved message content with better typography */
 .message-content {
     flex: 1;
     line-height: 1.7;
     font-size: 0.925rem;
     color: var(--text-secondary);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .message-content strong {
     font-weight: 600;
     color: var(--text-primary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.message-content p {
+    margin: 0.75rem 0 !important;
+    line-height: 1.7 !important;
+}
+
+.message-content ul, .message-content ol {
+    margin: 0.75rem 0 !important;
+    padding-left: 1.5rem !important;
+}
+
+.message-content li {
+    margin: 0.25rem 0 !important;
+    line-height: 1.6 !important;
+}
+
+.message-content code {
+    background: var(--bg-tertiary) !important;
+    padding: 0.2rem 0.4rem !important;
+    border-radius: 4px !important;
+    font-size: 0.85rem !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.message-content pre {
+    background: var(--bg-tertiary) !important;
+    padding: 1rem !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color) !important;
+    overflow-x: auto !important;
+    margin: 1rem 0 !important;
+}
+
+.message-content blockquote {
+    border-left: 3px solid var(--accent-primary) !important;
+    padding-left: 1rem !important;
+    margin: 1rem 0 !important;
+    font-style: italic !important;
+    color: var(--text-tertiary) !important;
 }
 
 /* Rename input styling with theme support */
@@ -538,27 +695,74 @@ p, div, span {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
 
+/* Improved chat input container */
+.stChatInput {
+    position: sticky !important;
+    bottom: 0 !important;
+    background: var(--bg-primary) !important;
+    padding: 1rem 0 !important;
+    margin-top: 2rem !important;
+    border-top: 1px solid var(--border-color) !important;
+    z-index: 100 !important;
+}
+
 /* Chat input styling with theme support */
 .stChatInput > div {
     border-radius: 12px !important;
-    border: 1px solid var(--border-color) !important;
+    border: 2px solid var(--border-color) !important;
     box-shadow: var(--shadow-md) !important;
     background: var(--bg-primary) !important;
+    transition: all 0.2s ease !important;
+}
+
+.stChatInput > div:focus-within {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), var(--shadow-lg) !important;
 }
 
 .stChatInput input {
     font-size: 0.925rem !important;
     font-weight: 400 !important;
-    padding: 1rem !important;
+    padding: 1rem 1.25rem !important;
     color: var(--text-primary) !important;
-    background: var(--bg-primary) !important;
+    background: transparent !important;
+    border: none !important;
+    line-height: 1.5 !important;
 }
 
-/* Responsive design */
+.stChatInput input::placeholder {
+    color: var(--text-tertiary) !important;
+    opacity: 0.8 !important;
+}
+
+/* Send button styling */
+.stChatInput button {
+    background: var(--gradient-primary) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    color: white !important;
+    padding: 0.75rem !important;
+    margin: 0.25rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.stChatInput button:hover {
+    background: var(--gradient-secondary) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* Better mobile responsiveness */
 @media (max-width: 768px) {
     .message {
         padding: 1rem;
-        margin: 0.75rem 0;
+        margin: 1rem 0;
+        gap: 0.75rem;
+    }
+    
+    .message-content {
+        font-size: 0.875rem;
     }
     
     .chat-title {
@@ -570,11 +774,7 @@ p, div, span {
     }
     
     h1 {
-        font-size: 1.875rem;
-    }
-    
-    .message-content {
-        font-size: 0.875rem;
+        font-size: 1.875rem !important;
     }
     
     .sidebar-toggle-fixed {
@@ -583,24 +783,102 @@ p, div, span {
         padding: 0.5rem !important;
         font-size: 1rem !important;
     }
+    
+    .stSidebar {
+        width: 280px !important;
+    }
+    
+    .stChatInput {
+        margin: 1rem -1rem 0 -1rem !important;
+        padding: 1rem !important;
+        border-radius: 0 !important;
+    }
 }
 
-/* Enhanced scrollbar styling */
+@media (max-width: 480px) {
+    .main-content-adjusted {
+        padding-left: 50px !important;
+    }
+    
+    .sidebar-toggle-fixed {
+        padding: 0.5rem !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+    }
+    
+    .message {
+        padding: 1rem !important;
+        gap: 0.75rem !important;
+        margin: 1rem 0 !important;
+    }
+    
+    .message-icon {
+        width: 2rem !important;
+        height: 2rem !important;
+    }
+    
+    h1 {
+        font-size: 1.75rem !important;
+        line-height: 1.2 !important;
+    }
+    
+    .message-content {
+        font-size: 0.85rem !important;
+        line-height: 1.6 !important;
+    }
+    
+    .stSidebar {
+        width: 260px !important;
+    }
+    
+    .stChatInput input {
+        font-size: 0.875rem !important;
+        padding: 0.875rem 1rem !important;
+    }
+}
+
+/* Enhanced scrollbar styling with theme support */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
     background: var(--bg-secondary);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--border-color);
     border-radius: 4px;
+    transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--border-hover);
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--bg-secondary);
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) var(--bg-secondary);
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Chat container improvements */
+.chat-container {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    margin-right: -0.5rem;
 }
 
 /* Footer styling */
@@ -848,11 +1126,16 @@ if st.session_state.sidebar_open:
                             label_visibility="collapsed"
                         )
                     with col2:
-                        if st.button("✓", key=f"confirm_{chat_key}", help="Confirm rename"):
+                        if st.button("✓", key=f"confirm_{chat_key}", help="Confirm rename", type="primary"):
                             if new_name and new_name != chat_key and new_name not in st.session_state.chats:
                                 st.session_state.chats[new_name] = st.session_state.chats.pop(chat_key)
                                 if st.session_state.active == chat_key:
                                     st.session_state.active = new_name
+                            st.session_state.editing_chat = None
+                            st.rerun()
+                        
+                        # Add cancel button
+                        if st.button("⏹", key=f"cancel_{chat_key}", help="Cancel rename"):
                             st.session_state.editing_chat = None
                             st.rerun()
                 else:
@@ -879,25 +1162,37 @@ if st.session_state.sidebar_open:
                             st.session_state.dropdown_open[chat_key] = not st.session_state.dropdown_open.get(chat_key, False)
                             st.rerun()
                     
-                    # Dropdown menu
+                    # Dropdown menu with improved styling
                     if st.session_state.dropdown_open.get(chat_key, False):
-                        with st.container():
-                            subcol1, subcol2 = st.columns(2)
-                            with subcol1:
-                                if st.button("✏️", key=f"edit_{chat_key}", help="Rename chat"):
-                                    st.session_state.editing_chat = chat_key
-                                    st.session_state.dropdown_open[chat_key] = False
+                        st.markdown("""
+                        <div style="
+                            background: var(--bg-tertiary);
+                            border: 1px solid var(--border-color);
+                            border-radius: 8px;
+                            padding: 0.5rem;
+                            margin: 0.25rem 0;
+                            box-shadow: var(--shadow-md);
+                        ">
+                        """, unsafe_allow_html=True)
+                        
+                        subcol1, subcol2 = st.columns(2)
+                        with subcol1:
+                            if st.button("✏️ Rename", key=f"edit_{chat_key}", help="Rename chat", use_container_width=True):
+                                st.session_state.editing_chat = chat_key
+                                st.session_state.dropdown_open[chat_key] = False
+                                st.rerun()
+                        with subcol2:
+                            if st.button("🗑️ Delete", key=f"delete_{chat_key}", help="Delete chat", use_container_width=True):
+                                if len(st.session_state.chats) > 1:
+                                    del st.session_state.chats[chat_key]
+                                    if st.session_state.active == chat_key:
+                                        st.session_state.active = next(iter(st.session_state.chats))
+                                    st.session_state.dropdown_open.pop(chat_key, None)
+                                    if st.session_state.editing_chat == chat_key:
+                                        st.session_state.editing_chat = None
                                     st.rerun()
-                            with subcol2:
-                                if st.button("🗑️", key=f"delete_{chat_key}", help="Delete chat"):
-                                    if len(st.session_state.chats) > 1:
-                                        del st.session_state.chats[chat_key]
-                                        if st.session_state.active == chat_key:
-                                            st.session_state.active = next(iter(st.session_state.chats))
-                                        st.session_state.dropdown_open.pop(chat_key, None)
-                                        if st.session_state.editing_chat == chat_key:
-                                            st.session_state.editing_chat = None
-                                        st.rerun()
+                        
+                        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- Main Chat Area ---
 # Enhanced title with gradient and better typography
@@ -938,9 +1233,12 @@ if active_key not in st.session_state.chats:
 
 chat = st.session_state.chats[active_key]
 
-# Display chat messages
+# Display chat messages with improved container
 chat_container = st.container()
 with chat_container:
+    # Add a wrapper div for better styling
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    
     for msg in chat[1:]:  # Skip system message
         role = msg['role']
         content = msg['content']
@@ -952,7 +1250,7 @@ with chat_container:
                     {ICONS['person']}
                 </div>
                 <div class="message-content">
-                    <strong>You</strong><br>
+                    <strong>You</strong>
                     {content}
                 </div>
             </div>
@@ -964,7 +1262,7 @@ with chat_container:
                     {ICONS['robot']}
                 </div>
                 <div class="message-content">
-                    <strong>HireScope Assistant</strong><br>
+                    <strong>HireScope Assistant</strong>
                     {content}
                 </div>
             </div>
@@ -993,11 +1291,13 @@ with chat_container:
             </div>
         </div>
         """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Chat input
+# Chat input with improved error handling
 prompt = st.chat_input("Ask about candidates, resumes, or hiring...")
 
-if prompt:
+if prompt and not st.session_state.is_generating:
     # Add user message
     chat.append({"role": "user", "content": prompt})
     
@@ -1007,46 +1307,49 @@ if prompt:
 
 # Process response if we're in generating state
 if st.session_state.is_generating:
-    # Generate response
-    try:
-        total = collection.count()
-        if total == 0:
-            reply = "⚠️ No resume data available. Please upload some resumes to get started."
-        else:
-            # Query the vector database
-            hits = collection.query(query_texts=[chat[-1]["content"]], n_results=3)
-            context = "\n---\n".join(hits.get("documents", [[]])[0])
-            
-            # Update system message with context
-            chat[0]["content"] = f"""You are a recruiter assistant. Answer ONLY from these résumé snippets:
+    # Add a placeholder for the response
+    with st.spinner("Thinking..."):
+        # Generate response
+        try:
+            total = collection.count()
+            if total == 0:
+                reply = "⚠️ No resume data available. Please upload some resumes to get started."
+            else:
+                # Query the vector database
+                hits = collection.query(query_texts=[chat[-1]["content"]], n_results=3)
+                context = "\n---\n".join(hits.get("documents", [[]])[0])
+                
+                # Update system message with context
+                chat[0]["content"] = f"""You are a recruiter assistant. Answer ONLY from these résumé snippets:
 {context}
 Be helpful, professional, and provide specific information from the resumes when available."""
-            
-            # Get AI response
-            result = openai.chat.completions.create(
-                model="gpt-4o",
-                messages=chat,
-                temperature=0.3,
-                max_tokens=1000
-            )
-            reply = result.choices[0].message.content
-            
-    except Exception as e:
-        reply = f"⚠️ Error processing your request: {str(e)}"
-    
-    # Add assistant response
-    chat.append({"role": "assistant", "content": reply})
-    
-    # Update chat title if it's still default
-    if active_key.startswith("New Chat") and len(chat) == 3:  # System + User + Assistant
-        new_title = generate_chat_title(chat[-2]["content"])  # Use user message for title
-        if new_title != active_key:
-            st.session_state.chats[new_title] = st.session_state.chats.pop(active_key)
-            st.session_state.active = new_title
-    
-    # Reset generating state
-    st.session_state.is_generating = False
-    st.rerun()
+                
+                # Get AI response
+                result = openai.chat.completions.create(
+                    model="gpt-4o",
+                    messages=chat,
+                    temperature=0.3,
+                    max_tokens=1000
+                )
+                reply = result.choices[0].message.content
+                
+        except Exception as e:
+            reply = f"⚠️ Error processing your request: {str(e)}"
+            st.error(f"An error occurred: {str(e)}")
+        
+        # Add assistant response
+        chat.append({"role": "assistant", "content": reply})
+        
+        # Update chat title if it's still default
+        if active_key.startswith("New Chat") and len(chat) == 3:  # System + User + Assistant
+            new_title = generate_chat_title(chat[-2]["content"])  # Use user message for title
+            if new_title != active_key:
+                st.session_state.chats[new_title] = st.session_state.chats.pop(active_key)
+                st.session_state.active = new_title
+        
+        # Reset generating state
+        st.session_state.is_generating = False
+        st.rerun()
 
 # Close the main content div if sidebar is closed
 if not st.session_state.sidebar_open:
