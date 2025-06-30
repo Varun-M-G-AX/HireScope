@@ -366,14 +366,6 @@ if not st.session_state.sidebar_open:
 # --- Sidebar ---
 if st.session_state.sidebar_open:
     with st.sidebar:
-        # Header with close button
-        col1, col2 = st.columns([0.8, 0.2])
-        with col1:
-            st.markdown("### 💼 HireScope")
-                st.rerun()
-        
-        st.markdown("---")
-        
         # New Chat Button
         if st.button("➕ New Chat", key="new_chat", help="Start a new conversation", use_container_width=True):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
