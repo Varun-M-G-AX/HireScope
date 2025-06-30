@@ -29,39 +29,48 @@ st.markdown("""
 header[data-testid="stHeader"] {display: none;}
 .stMainBlockContainer {padding-top: 1rem;}
 
-/* Sidebar toggle button - Fixed positioning and visibility */
-.sidebar-toggle-btn {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 9999;
-    background: rgba(28, 131, 225, 0.9);
-    border: 1px solid rgba(28, 131, 225, 0.5);
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 44px;
-    min-height: 44px;
+/* Fixed Sidebar Toggle Button - Always visible */
+.sidebar-toggle {
+    position: fixed !important;
+    top: 1rem !important;
+    left: 1rem !important;
+    z-index: 9999 !important;
+    background: #1c83e1 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0.75rem !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.2s ease !important;
+    font-weight: bold !important;
+    font-size: 1.1rem !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
-.sidebar-toggle-btn:hover {
-    background: rgba(28, 131, 225, 1);
-    border-color: rgba(28, 131, 225, 0.8);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+.sidebar-toggle:hover {
+    background: #0d6efd !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Adjust main content when sidebar is closed */
-.main-content-expanded {
+/* Main content adjustment when sidebar is closed */
+.main-content-adjusted {
     margin-left: 0 !important;
-    padding-left: 80px; /* Space for toggle button */
+    padding-left: 80px !important;
+}
+
+/* When sidebar is open, hide the fixed toggle and adjust main content */
+.sidebar-open .sidebar-toggle {
+    display: none !important;
+}
+
+.sidebar-open .main-content-adjusted {
+    padding-left: 1rem !important;
 }
 
 /* Skeleton loading animation */
@@ -73,7 +82,6 @@ header[data-testid="stHeader"] {display: none;}
         background-position: calc(200px + 100%) 0;
     }
 }
-
 .skeleton {
     display: inline-block;
     height: 1em;
@@ -87,7 +95,6 @@ header[data-testid="stHeader"] {display: none;}
     animation: skeleton-loading 1.5s infinite;
     border-radius: 0.25rem;
 }
-
 .skeleton-container {
     padding: 1rem;
     margin: 1rem 0;
@@ -98,7 +105,6 @@ header[data-testid="stHeader"] {display: none;}
     background: rgba(40, 167, 69, 0.1);
     border-left: 3px solid #28a745;
 }
-
 .skeleton-icon {
     flex-shrink: 0;
     width: 2rem;
@@ -110,21 +116,17 @@ header[data-testid="stHeader"] {display: none;}
     align-items: center;
     justify-content: center;
 }
-
 .skeleton-content {
     flex: 1;
     line-height: 1.6;
 }
-
 .skeleton-line {
     margin: 0.5rem 0;
 }
-
 .skeleton-line:nth-child(1) { width: 90%; }
 .skeleton-line:nth-child(2) { width: 85%; }
 .skeleton-line:nth-child(3) { width: 70%; }
 .skeleton-line:nth-child(4) { width: 95%; }
-
 /* Thinking dots animation */
 .thinking-dots {
     display: inline-flex;
@@ -132,7 +134,6 @@ header[data-testid="stHeader"] {display: none;}
     align-items: center;
     margin-left: 0.5rem;
 }
-
 .thinking-dot {
     width: 0.375rem;
     height: 0.375rem;
@@ -141,11 +142,9 @@ header[data-testid="stHeader"] {display: none;}
     opacity: 0.4;
     animation: thinking 1.4s infinite ease-in-out;
 }
-
 .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
 .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
 .thinking-dot:nth-child(3) { animation-delay: 0; }
-
 @keyframes thinking {
     0%, 80%, 100% {
         opacity: 0.4;
@@ -156,12 +155,10 @@ header[data-testid="stHeader"] {display: none;}
         transform: scale(1.2);
     }
 }
-
 /* Sidebar styling */
 .stSidebar > div {
     padding-top: 1rem;
 }
-
 /* Chat item styling */
 .chat-item {
     display: flex;
@@ -174,15 +171,12 @@ header[data-testid="stHeader"] {display: none;}
     transition: background-color 0.2s ease;
     position: relative;
 }
-
 .chat-item:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
-
 .chat-item.active {
     background-color: rgba(255, 255, 255, 0.15);
 }
-
 .chat-title {
     flex: 1;
     text-overflow: ellipsis;
@@ -191,18 +185,15 @@ header[data-testid="stHeader"] {display: none;}
     font-size: 0.9rem;
     margin-right: 0.5rem;
 }
-
 .chat-actions {
     display: flex;
     gap: 0.25rem;
     opacity: 0;
     transition: opacity 0.2s ease;
 }
-
 .chat-item:hover .chat-actions {
     opacity: 1;
 }
-
 .icon-button {
     background: none;
     border: none;
@@ -214,11 +205,9 @@ header[data-testid="stHeader"] {display: none;}
     justify-content: center;
     transition: background-color 0.2s ease;
 }
-
 .icon-button:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
-
 /* New chat button */
 .new-chat-btn {
     width: 100%;
@@ -236,12 +225,10 @@ header[data-testid="stHeader"] {display: none;}
     transition: all 0.2s ease;
     font-size: 0.9rem;
 }
-
 .new-chat-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
 }
-
 /* Message styling */
 .message {
     padding: 1rem;
@@ -251,17 +238,14 @@ header[data-testid="stHeader"] {display: none;}
     gap: 0.75rem;
     align-items: flex-start;
 }
-
 .message.user {
     background: rgba(0, 123, 255, 0.1);
     border-left: 3px solid #007bff;
 }
-
 .message.assistant {
     background: rgba(40, 167, 69, 0.1);
     border-left: 3px solid #28a745;
 }
-
 .message-icon {
     flex-shrink: 0;
     width: 2rem;
@@ -272,22 +256,18 @@ header[data-testid="stHeader"] {display: none;}
     justify-content: center;
     font-weight: bold;
 }
-
 .message.user .message-icon {
     background: #007bff;
     color: white;
 }
-
 .message.assistant .message-icon {
     background: #28a745;
     color: white;
 }
-
 .message-content {
     flex: 1;
     line-height: 1.6;
 }
-
 /* Rename input styling */
 .rename-input {
     width: 100%;
@@ -298,13 +278,11 @@ header[data-testid="stHeader"] {display: none;}
     color: inherit;
     font-size: 0.9rem;
 }
-
 .rename-input:focus {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
 }
-
 /* Responsive design */
 @media (max-width: 768px) {
     .message {
@@ -316,11 +294,10 @@ header[data-testid="stHeader"] {display: none;}
         font-size: 0.8rem;
     }
     
-    .main-content-expanded {
-        padding-left: 60px;
+    .main-content-adjusted {
+        padding-left: 60px !important;
     }
 }
-
 /* Hide Streamlit's settings menu */
 .stApp > header {visibility: visible;}
 .stDecoration {visibility: hidden;}
@@ -335,6 +312,14 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded" if st.session_state.sidebar_open else "collapsed"
 )
+
+# --- Add CSS class to body based on sidebar state ---
+sidebar_class = "sidebar-open" if st.session_state.sidebar_open else "sidebar-closed"
+st.markdown(f"""
+<script>
+document.body.className = '{sidebar_class}';
+</script>
+""", unsafe_allow_html=True)
 
 # --- Helper Functions ---
 def generate_chat_title(content):
@@ -366,35 +351,24 @@ if "dropdown_open" not in st.session_state:
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
 
-# --- Sidebar Toggle Button (when sidebar is closed) ---
+# --- Fixed Sidebar Toggle Button (Always Visible When Sidebar is Closed) ---
 if not st.session_state.sidebar_open:
-    with st.container():
-        col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
-        with col1:
-            if st.button("☰", key="toggle_sidebar_open", help="Open sidebar"):
-                st.session_state.sidebar_open = True
-                st.rerun()
-
-    # Optional floating style for toggle button
     st.markdown("""
-    <style>
-    .element-container:has(#toggle_sidebar_open) button {
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        z-index: 1000;
-        background-color: #1c83e1;
-        color: white;
-        border-radius: 8px;
-        padding: 0.5rem 0.8rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        border: none;
-        font-size: 1.2rem;
-        font-weight: bold;
-        min-width: 44px;
-        min-height: 44px;
+    <button class="sidebar-toggle" onclick="toggleSidebar()" title="Open Sidebar">
+        ☰
+    </button>
+    <script>
+    function toggleSidebar() {
+        // Find the button that toggles sidebar
+        const buttons = parent.document.querySelectorAll('button');
+        for (let button of buttons) {
+            if (button.textContent.includes('☰') && button.id && button.id.includes('toggle_sidebar')) {
+                button.click();
+                break;
+            }
+        }
     }
-    </style>
+    </script>
     """, unsafe_allow_html=True)
 
 # --- Sidebar ---
@@ -426,7 +400,6 @@ if st.session_state.sidebar_open:
             st.rerun()
         
         st.markdown("---")
-
         
         # Chat History
         if st.session_state.chats:
@@ -501,6 +474,21 @@ if st.session_state.sidebar_open:
                                         if st.session_state.editing_chat == chat_key:
                                             st.session_state.editing_chat = None
                                         st.rerun()
+else:
+    # Add a hidden button that can be triggered by the JavaScript
+    if st.button("☰", key="toggle_sidebar_open", help="Open sidebar", 
+                 type="primary", use_container_width=False):
+        st.session_state.sidebar_open = True
+        st.rerun()
+    
+    # Hide the button with CSS since we're using the fixed positioned one
+    st.markdown("""
+    <style>
+    .element-container:has(#toggle_sidebar_open) {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- Main Chat Area ---
 st.title("💼 HireScope Chat")
