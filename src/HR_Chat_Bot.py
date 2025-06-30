@@ -3,9 +3,6 @@ import streamlit as st
 from datetime import datetime
 from utils import collection, openai  # You must provide your own collection and openai setup
 
-# Force sidebar to always be accessible
-if 'sidebar_open' not in st.session_state:
-    st.session_state.sidebar_open = True
 
 # Remove the condition that hides the sidebar completely
 # Instead of checking sidebar_open, always show sidebar but make it collapsible
