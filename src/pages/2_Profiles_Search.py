@@ -437,11 +437,17 @@ st.markdown("*Browse and manage all résumés processed by HireScope AI*")
 
 # Fetching data
 try:
-    res = collection.get(include=["metadatas", "documents"])
+    res = collection.get(include=["metadatas", "documents", "ids"])
     metas, docs = res["metadatas"], res["documents"]
+    
+    # Debug: Only show this if needed for troubleshooting
+    # if metas and len(metas) > 0:
+    #     st.write("Debug - Sample metadata keys:", list(metas[0].keys()) if metas[0] else "No metadata")
+        
 except Exception as e:
     st.error(f"🚨 Failed to load candidate data: {e}")
     metas, docs = [], []
+    res = {"ids": []}
 
 # Stats section
 if metas:
@@ -504,6 +510,7 @@ with st.sidebar:
         st.rerun()
 
 def matches(meta, doc):
+    # Basic text filters
     basic_match = (
         (name_filter.lower() in meta.get('name', '').lower() if name_filter else True) and
         (id_filter.lower() in meta.get('candidate_id', '').lower() if id_filter else True) and
@@ -514,18 +521,47 @@ def matches(meta, doc):
     if not basic_match:
         return False
     
-    # Advanced filters
-    if has_email and 'email' not in doc.lower():
-        return False
-    if has_phone and 'phone' not in doc.lower():
-        return False
-    if has_linkedin and 'linkedin' not in doc.lower():
-        return False
+    # Advanced filters - check both metadata and document content
+    if has_email:
+        email_found = (
+            'email' in doc.lower() or 
+            any('email' in str(value).lower() for value in meta.values() if value)
+        )
+        if not email_found:
+            return False
+            
+    if has_phone:
+        phone_found = (
+            'phone' in doc.lower() or 
+            any('phone' in str(value).lower() for value in meta.values() if value) or
+            any(char.isdigit() for char in doc)  # Check for numbers in document
+        )
+        if not phone_found:
+            return False
+            
+    if has_linkedin:
+        linkedin_found = (
+            'linkedin' in doc.lower() or 
+            any('linkedin' in str(value).lower() for value in meta.values() if value)
+        )
+        if not linkedin_found:
+            return False
     
     return True
 
 # Filter and display candidates
-filtered_candidates = [(meta, doc) for meta, doc in zip(metas, docs) if matches(meta, doc)]
+filtered_candidates = []
+candidate_ids = []  # Keep track of IDs for deletion
+
+if metas and docs:
+    for i, (meta, doc) in enumerate(zip(metas, docs)):
+        if matches(meta, doc):
+            filtered_candidates.append((meta, doc, i))  # Include original index
+            # Try to get the actual ID from the collection
+            try:
+                candidate_ids.append(res["ids"][i] if "ids" in res and i < len(res["ids"]) else meta.get('candidate_id', f'idx_{i}'))
+            except:
+                candidate_ids.append(meta.get('candidate_id', f'idx_{i}'))
 
 if not metas:
     st.markdown("""
@@ -557,11 +593,14 @@ st.markdown(f"## 📋 Results ({len(filtered_candidates)} candidates)")
 # Grid layout for candidates
 cols = st.columns(2)
 
-for idx, (meta, doc) in enumerate(filtered_candidates):
+for idx, (meta, doc, original_idx) in enumerate(filtered_candidates):
     name = meta.get('name', 'Unknown')
     uploaded_by = meta.get('uploaded_by', 'N/A')
     upload_date = meta.get('upload_timestamp', 'N/A')
     candidate_id = meta.get('candidate_id', '')
+    
+    # Get the actual ID for deletion
+    actual_id = candidate_ids[idx] if idx < len(candidate_ids) else candidate_id
 
     # Avatar logic
     avatar_url = meta.get('avatar_url')
@@ -592,7 +631,7 @@ for idx, (meta, doc) in enumerate(filtered_candidates):
                         for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d %H:%M"]:
                             try:
                                 parsed_date = datetime.strptime(upload_date, fmt)
-                                display_date = parsed_date.strftime("%B %d, %Y")
+                                display_date = parsed_date.strftime("%B %d, %Y at %I:%M %p")
                                 break
                             except ValueError:
                                 continue
@@ -601,10 +640,15 @@ for idx, (meta, doc) in enumerate(filtered_candidates):
                             display_date = upload_date
                     else:
                         # If it's already a datetime object
-                        display_date = upload_date.strftime("%B %d, %Y")
+                        display_date = upload_date.strftime("%B %d, %Y at %I:%M %p")
                 except:
                     # Fallback to original value if parsing fails
                     display_date = str(upload_date)
+            else:
+                # Use current date and time as fallback
+                current_time = datetime.now()
+                display_date = current_time.strftime("%B %d, %Y at %I:%M %p")
+                st.caption("⚠️ Using current time as upload timestamp was not available")
             
             # Main card header with avatar and name
             avatar_col, info_col = st.columns([1, 5])
@@ -667,13 +711,24 @@ for idx, (meta, doc) in enumerate(filtered_candidates):
                 with c1:
                     if st.button("✅ Confirm Delete", key=f"confirm_{idx}", type="primary"):
                         try:
-                            collection.delete(ids=[candidate_id])
+                            # Try different deletion methods
+                            if actual_id:
+                                collection.delete(ids=[actual_id])
+                            else:
+                                # Fallback: delete by metadata match
+                                collection.delete(where={"candidate_id": candidate_id})
+                            
                             if hasattr(chroma_client, "persist"):
                                 chroma_client.persist()
                             st.success(f"✅ Successfully deleted {name}")
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Error deleting candidate: {e}")
+                            # Show debug info only on error
+                            with st.expander("🔍 Debug Information"):
+                                st.write(f"Attempted deletion with ID: {actual_id}")
+                                st.write(f"Candidate ID from metadata: {candidate_id}")
+                                st.write(f"Available IDs: {len(candidate_ids) if candidate_ids else 0}")
                 with c2:
                     if st.button("❌ Cancel", key=f"cancel_{idx}"):
                         st.rerun()
