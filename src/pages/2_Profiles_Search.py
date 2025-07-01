@@ -437,12 +437,17 @@ st.markdown("*Browse and manage all résumés processed by HireScope AI*")
 
 # Fetching data
 try:
-    res = collection.get(include=["metadatas", "documents", "ids"])
+    res = collection.get(include=["metadatas", "documents"])
     metas, docs = res["metadatas"], res["documents"]
+    # Get IDs separately if available
+    try:
+        all_ids = res.get("ids", [])
+    except:
+        all_ids = []
 except Exception as e:
     st.error(f"🚨 Failed to load candidate data: {e}")
     metas, docs = [], []
-    res = {"ids": []}
+    all_ids = []
 
 # Stats section
 if metas:
@@ -554,7 +559,7 @@ if metas and docs:
             filtered_candidates.append((meta, doc, i))  # Include original index
             # Try to get the actual ID from the collection
             try:
-                candidate_ids.append(res["ids"][i] if "ids" in res and i < len(res["ids"]) else meta.get('candidate_id', f'idx_{i}'))
+                candidate_ids.append(all_ids[i] if i < len(all_ids) else meta.get('candidate_id', f'idx_{i}'))
             except:
                 candidate_ids.append(meta.get('candidate_id', f'idx_{i}'))
 
