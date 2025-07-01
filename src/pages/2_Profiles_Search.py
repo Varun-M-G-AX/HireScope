@@ -439,11 +439,6 @@ st.markdown("*Browse and manage all résumés processed by HireScope AI*")
 try:
     res = collection.get(include=["metadatas", "documents", "ids"])
     metas, docs = res["metadatas"], res["documents"]
-    
-    # Debug: Only show this if needed for troubleshooting
-    # if metas and len(metas) > 0:
-    #     st.write("Debug - Sample metadata keys:", list(metas[0].keys()) if metas[0] else "No metadata")
-        
 except Exception as e:
     st.error(f"🚨 Failed to load candidate data: {e}")
     metas, docs = [], []
@@ -648,7 +643,8 @@ for idx, (meta, doc, original_idx) in enumerate(filtered_candidates):
                 # Use current date and time as fallback
                 current_time = datetime.now()
                 display_date = current_time.strftime("%B %d, %Y at %I:%M %p")
-                st.caption("⚠️ Using current time as upload timestamp was not available")
+                # Only show warning if needed - you can uncomment this line for debugging
+                # st.caption("⚠️ Using current time as upload timestamp was not available")
             
             # Main card header with avatar and name
             avatar_col, info_col = st.columns([1, 5])
