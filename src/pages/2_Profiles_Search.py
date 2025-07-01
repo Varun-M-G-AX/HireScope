@@ -1,6 +1,6 @@
 import streamlit as st
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils import collection, chroma_client
 
 st.set_page_config(
@@ -10,448 +10,89 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced CSS for modern UI
+# Simplified CSS
 st.markdown("""
 <style>
-/* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* CSS Variables for theme support */
-:root {
-    --primary-color: #667eea;
-    --secondary-color: #764ba2;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-    --text-tertiary: #9ca3af;
-    --bg-primary: #ffffff;
-    --bg-secondary: #f9fafb;
-    --bg-tertiary: #f3f4f6;
-    --border-color: #e5e7eb;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-}
-
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --text-primary: #f9fafb;
-        --text-secondary: #d1d5db;
-        --text-tertiary: #9ca3af;
-        --bg-primary: #111827;
-        --bg-secondary: #1f2937;
-        --bg-tertiary: #374151;
-        --border-color: #374151;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    }
-}
-
-/* Global styles */
 * {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
-.stApp {
-    background-color: var(--bg-primary);
+.candidate-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
 }
 
-/* Hide Streamlit branding */
-.stDeployButton {
-    display: none !important;
+.candidate-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
 }
 
-/* Typography */
-h1 {
-    color: var(--text-primary) !important;
-    font-weight: 700 !important;
-    font-size: 2.5rem !important;
-    margin-bottom: 0.5rem !important;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-h2, h3 {
-    color: var(--text-primary) !important;
-    font-weight: 600 !important;
-}
-
-/* Enhanced candidate card styling for Streamlit containers */
-div[data-testid="stContainer"] {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color) !important;
-    border-radius: var(--radius-lg) !important;
-    padding: 1.5rem !important;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-div[data-testid="stContainer"]:hover {
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    transform: translateY(-4px);
-    border-color: var(--primary-color) !important;
-}
-
-div[data-testid="stContainer"]::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-}
-
-/* Better spacing for card content */
-div[data-testid="stContainer"] > div {
-    margin-bottom: 1rem !important;
-}
-
-div[data-testid="stContainer"] > div:last-child {
-    margin-bottom: 0 !important;
-}
-
-/* Avatar styling - updated for better layout */
-.avatar-circle {
-    width: 64px;
-    height: 64px;
+.avatar {
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 600;
-    border: 3px solid var(--bg-primary);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    margin: 0;
-}
-
-/* Streamlit image styling within containers */
-div[data-testid="stContainer"] img {
-    border-radius: 50%;
-    border: 3px solid var(--bg-primary);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    object-fit: cover;
-}
-
-/* Typography improvements for card content */
-div[data-testid="stContainer"] h1, 
-div[data-testid="stContainer"] h2, 
-div[data-testid="stContainer"] h3,
-div[data-testid="stContainer"] h4 {
-    color: var(--text-primary) !important;
-    margin-bottom: 0.5rem !important;
-    margin-top: 0 !important;
-}
-
-div[data-testid="stContainer"] h3 {
-    font-size: 1.25rem !important;
-    font-weight: 600 !important;
-    line-height: 1.3 !important;
-}
-
-div[data-testid="stContainer"] p {
-    color: var(--text-secondary) !important;
-    margin-bottom: 0.25rem !important;
-    font-size: 0.9rem !important;
-    line-height: 1.4 !important;
-}
-
-/* Code styling for candidate ID */
-div[data-testid="stContainer"] code {
-    background: var(--bg-tertiary) !important;
-    color: var(--text-primary) !important;
-    padding: 0.2rem 0.4rem !important;
-    border-radius: 4px !important;
-    font-size: 0.85rem !important;
-    font-family: 'JetBrains Mono', monospace !important;
-}
-
-/* Divider styling within cards */
-div[data-testid="stContainer"] hr {
-    border: none !important;
-    border-top: 1px solid var(--border-color) !important;
-    margin: 0.75rem 0 !important;
-    opacity: 0.7 !important;
-}
-
-/* Contact links styling */
-div[data-testid="stContainer"] a {
-    color: var(--primary-color) !important;
-    text-decoration: none !important;
-    font-weight: 500 !important;
-}
-
-div[data-testid="stContainer"] a:hover {
-    text-decoration: underline !important;
-    color: var(--secondary-color) !important;
-}
-
-/* Button styling - keeping for reference but using Streamlit native styling above */
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-secondary {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-    background: var(--bg-tertiary);
-    transform: translateY(-1px);
-}
-
-.btn-danger {
-    background: var(--danger-color);
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-danger:hover {
-    background: #dc2626;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-/* Streamlit button styling within bordered containers */
-div[data-testid="stContainer"] .stButton > button {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: var(--radius-md) !important;
-    font-weight: 500 !important;
-    font-size: 0.875rem !important;
-    padding: 0.625rem 1rem !important;
-    transition: all 0.2s ease !important;
-    width: 100% !important;
-    margin-bottom: 0 !important;
-    height: 38px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-div[data-testid="stContainer"] .stButton > button:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
-    background: linear-gradient(135deg, #5a67d8, #6b46c1) !important;
-}
-
-div[data-testid="stContainer"] .stButton > button[kind="secondary"] {
-    background: var(--bg-tertiary) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border-color) !important;
-}
-
-div[data-testid="stContainer"] .stButton > button[kind="secondary"]:hover {
-    background: var(--danger-color) !important;
-    color: white !important;
-    border-color: var(--danger-color) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
-}
-
-/* Remove button container margins and improve spacing */
-div[data-testid="stContainer"] .stButton {
-    margin-bottom: 0 !important;
-}
-
-div[data-testid="stContainer"] .element-container {
-    margin-bottom: 0.4rem !important;
-}
-
-/* Improve spacing between button columns */
-div[data-testid="stContainer"] .stColumns {
-    gap: 0.75rem !important;
-}
-
-div[data-testid="stContainer"] .stColumns > div {
-    padding-left: 0.375rem !important;
-    padding-right: 0.375rem !important;
-}
-
-/* Summary modal */
-.summary-modal {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-top: 1rem;
-    max-height: 400px;
-    overflow-y: auto;
-    box-shadow: var(--shadow-md);
-}
-
-.summary-content {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: var(--text-secondary);
-    white-space: pre-wrap;
-    background: var(--bg-primary);
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-}
-
-/* Filter section */
-.filter-section {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-}
-
-/* Stats cards */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
 }
 
 .stat-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
     text-align: center;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    margin-bottom: 1rem;
 }
 
 .stat-number {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
+    color: #667eea;
 }
 
 .stat-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.stButton > button {
+    width: 100%;
+    border-radius: 6px;
     font-weight: 500;
-}
-
-/* Empty state */
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    border: 2px dashed var(--border-color);
-    margin: 2rem 0;
-}
-
-.empty-state-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
-}
-
-.empty-state-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-}
-
-.empty-state-text {
-    color: var(--text-secondary);
-    font-size: 1rem;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .candidate-card {
-        padding: 1rem;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    h1 {
-        font-size: 2rem !important;
-    }
 }
 </style>
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown("# 📇 Candidate Profiles")
-st.markdown("*Browse and manage all résumés processed by HireScope AI*")
+st.title("📇 Candidate Profiles")
+st.caption("Browse and manage all résumés processed by HireScope AI")
 
-# Fetching data
-try:
-    res = collection.get(include=["metadatas", "documents"])
-    metas, docs = res["metadatas"], res["documents"]
-    # Get all data including IDs using a different approach
+# Load data
+@st.cache_data(ttl=60)
+def load_data():
     try:
-        # Try to get all items with IDs
-        all_data = collection.get()
-        all_ids = all_data.get("ids", [])
-    except:
-        all_ids = []
-except Exception as e:
-    st.error(f"🚨 Failed to load candidate data: {e}")
-    metas, docs = [], []
-    all_ids = []
+        data = collection.get()
+        return data.get("metadatas", []), data.get("documents", []), data.get("ids", [])
+    except Exception as e:
+        st.error(f"Failed to load data: {e}")
+        return [], [], []
 
-# Stats section
+metas, docs, all_ids = load_data()
+
+# Stats
 if metas:
     col1, col2, col3, col4 = st.columns(4)
     
@@ -464,356 +105,180 @@ if metas:
         """, unsafe_allow_html=True)
     
     with col2:
-        uploaders = set(meta.get('uploaded_by', 'Unknown') for meta in metas)
+        uploaders = len(set(meta.get('uploaded_by', 'Unknown') for meta in metas))
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{len(uploaders)}</div>
+            <div class="stat-number">{uploaders}</div>
             <div class="stat-label">HR Users</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
-        # Count profiles with contact info
-        with_contact = sum(1 for meta, doc in zip(metas, docs) 
-                          if any(field in doc.lower() for field in ['email', 'phone', 'linkedin']))
+        with_contact = sum(1 for doc in docs if any(term in str(doc).lower() for term in ['@', 'phone', 'linkedin']))
         st.markdown(f"""
         <div class="stat-card">
             <div class="stat-number">{with_contact}</div>
-            <div class="stat-label">With Contact Info</div>
+            <div class="stat-label">With Contact</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
-        # Recent uploads - count profiles uploaded in the last 7 days
-        from datetime import datetime, timedelta
-        recent_count = 0
-        cutoff_date = datetime.now() - timedelta(days=7)
-        
+        # Recent uploads (last 7 days)
+        cutoff = datetime.now() - timedelta(days=7)
+        recent = 0
         for meta in metas:
-            upload_date = meta.get('upload_timestamp')
-            if upload_date:
+            date_str = meta.get('upload_timestamp', '')
+            if date_str:
                 try:
-                    if isinstance(upload_date, str):
-                        # Try different date formats
-                        for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"]:
-                            try:
-                                parsed_date = datetime.strptime(upload_date, fmt)
-                                if parsed_date >= cutoff_date:
-                                    recent_count += 1
-                                break
-                            except ValueError:
-                                continue
-                    elif hasattr(upload_date, 'strftime'):  # datetime object
-                        if upload_date >= cutoff_date:
-                            recent_count += 1
+                    for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]:
+                        try:
+                            date_obj = datetime.strptime(date_str, fmt)
+                            if date_obj >= cutoff:
+                                recent += 1
+                            break
+                        except:
+                            continue
                 except:
-                    continue
+                    pass
         
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{recent_count}</div>
-            <div class="stat-label">Recent Uploads</div>
+            <div class="stat-number">{recent}</div>
+            <div class="stat-label">Recent (7d)</div>
         </div>
         """, unsafe_allow_html=True)
 
-# Sidebar filters
+# Filters
 with st.sidebar:
-    st.markdown("## 🔍 Filter Candidates")
+    st.subheader("🔍 Filters")
     
-    # Check if reset was clicked
-    if st.button("🔄 Reset Filters", use_container_width=True):
-        # Clear session state for filters
-        for key in ['name_filter', 'id_filter', 'by_hr', 'keywords', 'has_email', 'has_phone', 'has_linkedin']:
-            if key in st.session_state:
-                del st.session_state[key]
+    if st.button("🔄 Clear All", use_container_width=True):
         st.rerun()
     
-    name_filter = st.text_input("👤 Candidate Name", placeholder="Enter name...", key="name_filter")
-    id_filter = st.text_input("🆔 Candidate ID", placeholder="Enter ID...", key="id_filter")
-    by_hr = st.text_input("👨‍💼 Uploaded By", placeholder="HR user...", key="by_hr")
-    keywords = st.text_input("🔍 Keywords", placeholder="Skills, keywords...", key="keywords")
+    name_filter = st.text_input("Name", placeholder="Search by name...")
+    keywords_filter = st.text_input("Keywords", placeholder="Skills, experience...")
     
-    # Advanced filters
-    with st.expander("🎯 Advanced Filters"):
-        has_email = st.checkbox("Has Email", key="has_email")
-        has_phone = st.checkbox("Has Phone", key="has_phone")
-        has_linkedin = st.checkbox("Has LinkedIn", key="has_linkedin")
+    with st.expander("Advanced"):
+        has_email = st.checkbox("Has Email")
+        has_phone = st.checkbox("Has Phone") 
+        has_linkedin = st.checkbox("Has LinkedIn")
 
-def matches(meta, doc):
-    # Basic text filters
-    basic_match = (
-        (not name_filter or name_filter.lower() in meta.get('name', '').lower()) and
-        (not id_filter or id_filter.lower() in meta.get('candidate_id', '').lower()) and
-        (not by_hr or by_hr.lower() in meta.get('uploaded_by', '').lower()) and
-        (not keywords or keywords.lower() in doc.lower())
-    )
+# Filter function
+def filter_candidates(meta, doc):
+    doc_str = str(doc).lower()
     
-    if not basic_match:
+    # Name filter
+    if name_filter and name_filter.lower() not in meta.get('name', '').lower():
         return False
     
-    # Advanced filters - check both metadata and document content
-    if has_email:
-        email_found = (
-            'email' in doc.lower() or 
-            '@' in doc or  # Look for email patterns
-            any('email' in str(value).lower() for value in meta.values() if value)
-        )
-        if not email_found:
-            return False
-            
-    if has_phone:
-        import re
-        phone_found = (
-            'phone' in doc.lower() or 
-            'mobile' in doc.lower() or
-            'contact' in doc.lower() or
-            re.search(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', doc) or  # Phone number pattern
-            any('phone' in str(value).lower() for value in meta.values() if value)
-        )
-        if not phone_found:
-            return False
-            
-    if has_linkedin:
-        linkedin_found = (
-            'linkedin' in doc.lower() or 
-            'linkedin.com' in doc.lower() or
-            any('linkedin' in str(value).lower() for value in meta.values() if value)
-        )
-        if not linkedin_found:
-            return False
+    # Keywords filter
+    if keywords_filter and keywords_filter.lower() not in doc_str:
+        return False
+    
+    # Contact filters
+    if has_email and '@' not in doc_str:
+        return False
+    if has_phone and not any(term in doc_str for term in ['phone', 'mobile', 'tel']):
+        return False
+    if has_linkedin and 'linkedin' not in doc_str:
+        return False
     
     return True
 
-# Filter and display candidates
-filtered_candidates = []
-candidate_ids = []  # Keep track of IDs for deletion
-
-if metas and docs:
-    for i, (meta, doc) in enumerate(zip(metas, docs)):
-        if matches(meta, doc):
-            filtered_candidates.append((meta, doc, i))  # Include original index
-            # Try to get the actual ID from the collection
-            try:
-                candidate_ids.append(all_ids[i] if i < len(all_ids) else meta.get('candidate_id', f'idx_{i}'))
-            except:
-                candidate_ids.append(meta.get('candidate_id', f'idx_{i}'))
-
-if not metas:
-    st.markdown("""
-    <div class="empty-state">
-        <div class="empty-state-icon">📂</div>
-        <div class="empty-state-title">No Candidates Found</div>
-        <div class="empty-state-text">
-            Start by uploading some résumés using the 'Upload Résumés' page.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.stop()
-
-if not filtered_candidates:
-    st.markdown("""
-    <div class="empty-state">
-        <div class="empty-state-icon">🔍</div>
-        <div class="empty-state-title">No Matches Found</div>
-        <div class="empty-state-text">
-            Try adjusting your search criteria or clearing the filters.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.stop()
+# Apply filters
+filtered_data = []
+for i, (meta, doc) in enumerate(zip(metas, docs)):
+    if filter_candidates(meta, doc):
+        filtered_data.append((meta, doc, all_ids[i] if i < len(all_ids) else f'id_{i}'))
 
 # Display results
-st.markdown(f"## 📋 Results ({len(filtered_candidates)} candidates)")
+if not metas:
+    st.info("No candidates found. Upload some résumés to get started.")
+    st.stop()
 
-# Grid layout for candidates
-cols = st.columns(2)
+if not filtered_data:
+    st.warning("No matches found. Try adjusting your filters.")
+    st.stop()
 
-for idx, (meta, doc, original_idx) in enumerate(filtered_candidates):
+st.subheader(f"📋 Results ({len(filtered_data)} candidates)")
+
+# Cards layout
+for idx, (meta, doc, doc_id) in enumerate(filtered_data):
     name = meta.get('name', 'Unknown')
+    candidate_id = meta.get('candidate_id', 'N/A')
     uploaded_by = meta.get('uploaded_by', 'N/A')
     upload_date = meta.get('upload_timestamp', 'N/A')
-    candidate_id = meta.get('candidate_id', '')
     
-    # Get the actual ID for deletion
-    actual_id = candidate_ids[idx] if idx < len(candidate_ids) else candidate_id
-
-    # Avatar logic
-    avatar_url = meta.get('avatar_url')
-    initials = "".join([w[0] for w in name.split() if w and w[0].isalpha()]).upper()[:2] or "👤"
-
     # Parse contact info
-    email = phone = linkedin = None
-    summary_json = None
     try:
-        summary_json = json.loads(doc)
-        email = summary_json.get("email")
-        phone = summary_json.get("phone")
-        linkedin = summary_json.get("linkedin")
-    except Exception:
-        summary_json = None
-
-    col = cols[idx % len(cols)]
-    with col:
-        # Create enhanced candidate card with professional layout
-        with st.container(border=True):
-            # Format upload date properly
-            display_date = "Date not available"
-            if upload_date and upload_date != "N/A":
-                try:
-                    # Try to parse different date formats
-                    if isinstance(upload_date, str):
-                        # Handle common date formats
-                        for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d %H:%M"]:
-                            try:
-                                parsed_date = datetime.strptime(upload_date, fmt)
-                                display_date = parsed_date.strftime("%B %d, %Y at %I:%M %p")
-                                break
-                            except ValueError:
-                                continue
-                        else:
-                            # If no format matches, use the original string
-                            display_date = upload_date
-                    else:
-                        # If it's already a datetime object
-                        display_date = upload_date.strftime("%B %d, %Y at %I:%M %p")
-                except:
-                    # Fallback to original value if parsing fails
-                    display_date = str(upload_date)
-            else:
-                # Use current date and time as fallback
-                current_time = datetime.now()
-                display_date = current_time.strftime("%B %d, %Y at %I:%M %p")
-                # Only show warning if needed - you can uncomment this line for debugging
-                # st.caption("⚠️ Using current time as upload timestamp was not available")
-            
-            # Main card header with avatar and name
-            avatar_col, info_col = st.columns([1, 4])
-            
-            with avatar_col:
-                if avatar_url:
-                    st.image(avatar_url, width=64)
-                else:
-                    st.markdown(f"""
-                    <div class="avatar-circle" style="width: 64px; height: 64px; font-size: 1.5rem;">{initials}</div>
-                    """, unsafe_allow_html=True)
-            
-            with info_col:
-                st.markdown(f"### {name}")
-                st.markdown(f"**ID:** `{candidate_id}`")
-                st.markdown(f"**Uploaded by:** {uploaded_by}")
-                st.markdown(f"**Date:** {display_date}")
-            
-            # Compact contact information in a clean layout
-            if email or phone or linkedin:
-                st.markdown("---")
-                st.markdown("**Contact Information:**")
-                
-                # Contact info in clean layout
-                contact_items = []
-                if email:
-                    contact_items.append(f"📧 [{email}](mailto:{email})")
-                if phone:
-                    contact_items.append(f"📞 {phone}")
-                if linkedin:
-                    contact_items.append(f"🔗 [LinkedIn]({linkedin})")
-                
-                # Display contact info
-                for item in contact_items:
-                    st.markdown(f"- {item}")
-            
-            # Clean action buttons at the bottom
-            st.markdown("---")
-            action_col1, action_col2 = st.columns([1, 1])
-            with action_col1:
-                view_summary = st.button("📄 View Summary", key=f"view_{idx}", use_container_width=True)
-            with action_col2:
-                delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}", use_container_width=True, type="secondary")
-
-            # Summary modal
-            if view_summary:
-                if summary_json:
-                    summary_str = json.dumps(summary_json, indent=2, ensure_ascii=False)
-                else:
-                    summary_str = doc
-                
-                st.markdown(f"""
-                <div class="summary-modal">
-                    <h4 style="color: var(--text-primary); margin-bottom: 1rem;">📄 Candidate Summary</h4>
-                    <div class="summary-content">{summary_str}</div>
+        doc_json = json.loads(doc)
+        email = doc_json.get('email', 'N/A')
+        phone = doc_json.get('phone', 'N/A')
+        linkedin = doc_json.get('linkedin', 'N/A')
+    except:
+        email = phone = linkedin = 'N/A'
+    
+    # Avatar
+    initials = ''.join([word[0] for word in name.split() if word])[:2].upper() or '??'
+    
+    with st.container():
+        st.markdown(f"""
+        <div class="candidate-card">
+            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                <div class="avatar">{initials}</div>
+                <div style="margin-left: 1rem;">
+                    <h3 style="margin: 0; color: #1f2937;">{name}</h3>
+                    <p style="margin: 0; color: #6b7280;">ID: {candidate_id}</p>
+                    <p style="margin: 0; color: #6b7280;">By: {uploaded_by} • {upload_date}</p>
                 </div>
-                """, unsafe_allow_html=True)
-
-            # Delete confirmation
-            if delete_candidate:
-                st.warning(f"⚠️ Delete **{name}**? This action cannot be undone.")
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("✅ Confirm Delete", key=f"confirm_{idx}", type="primary"):
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <strong>Contact:</strong><br>
+                📧 {email}<br>
+                📞 {phone}<br>
+                🔗 {linkedin}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Action buttons
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📄 View Summary", key=f"view_{idx}"):
+                with st.expander("Summary", expanded=True):
+                    st.text(doc)
+        
+        with col2:
+            if st.button("🗑️ Delete", key=f"delete_{idx}", type="secondary"):
+                if st.button(f"⚠️ Confirm Delete {name}?", key=f"confirm_{idx}", type="primary"):
+                    try:
+                        # Try deletion methods
+                        success = False
+                        
+                        # Method 1: By ID
                         try:
-                            # Try different deletion methods in order of preference
-                            deleted = False
-                            
-                            # Method 1: Try using the actual ChromaDB ID
-                            if actual_id and actual_id != candidate_id:
-                                try:
-                                    collection.delete(ids=[actual_id])
-                                    deleted = True
-                                except Exception as e1:
-                                    st.write(f"Method 1 failed: {e1}")
-                            
-                            # Method 2: Try using candidate_id as ChromaDB ID
-                            if not deleted and candidate_id:
-                                try:
-                                    collection.delete(ids=[candidate_id])
-                                    deleted = True
-                                except Exception as e2:
-                                    st.write(f"Method 2 failed: {e2}")
-                            
-                            # Method 3: Try metadata-based deletion
-                            if not deleted:
-                                try:
-                                    collection.delete(where={"candidate_id": candidate_id})
-                                    deleted = True
-                                except Exception as e3:
-                                    st.write(f"Method 3 failed: {e3}")
-                            
-                            # Method 4: Try deleting by name (last resort)
-                            if not deleted:
-                                try:
-                                    collection.delete(where={"name": name})
-                                    deleted = True
-                                except Exception as e4:
-                                    st.write(f"Method 4 failed: {e4}")
-                            
-                            if deleted:
-                                # Persist changes
-                                try:
-                                    if hasattr(chroma_client, "persist"):
-                                        chroma_client.persist()
-                                except:
-                                    pass
-                                st.success(f"✅ Successfully deleted {name}")
-                                st.rerun()
-                            else:
-                                st.error("❌ All deletion methods failed")
-                                
-                        except Exception as e:
-                            st.error(f"❌ Error deleting candidate: {e}")
-                            # Show debug info only on error
-                            with st.expander("🔍 Debug Information"):
-                                st.write(f"Attempted deletion with ID: {actual_id}")
-                                st.write(f"Candidate ID from metadata: {candidate_id}")
-                                st.write(f"Available IDs: {len(candidate_ids) if candidate_ids else 0}")
-                                st.write(f"All IDs length: {len(all_ids)}")
-                                st.write(f"Name: {name}")
-                with c2:
-                    if st.button("❌ Cancel", key=f"cancel_{idx}"):
-                        st.rerun()
+                            collection.delete(ids=[str(doc_id)])
+                            success = True
+                        except:
+                            pass
+                        
+                        # Method 2: By candidate_id
+                        if not success and candidate_id != 'N/A':
+                            try:
+                                collection.delete(where={"candidate_id": candidate_id})
+                                success = True
+                            except:
+                                pass
+                        
+                        if success:
+                            st.success(f"Deleted {name}")
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
 # Footer
 st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; padding: 1rem 0;">
-    HireScope Candidate Management • Built with ❤️ using Streamlit
-</div>
-""", unsafe_allow_html=True)
+st.markdown("*HireScope Candidate Management*")
