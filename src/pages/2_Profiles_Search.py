@@ -1,84 +1,238 @@
-# Updated Streamlit Sidebar Toggle Code Snippet
 import streamlit as st
+import json
+from datetime import datetime, timedelta
+from utils import collection, chroma_client
 
-# --- State initialization ---
-if "sidebar_open" not in st.session_state:
-    st.session_state.sidebar_open = True
+st.set_page_config(
+    page_title="HireScope - Candidate Profiles",
+    page_icon="📇",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- SVG Icon for Toggle ---
-ICON_MENU = """<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'><path d='M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5'/></svg>"""
-
-# --- CSS Styling ---
+# --- Modern theme-adaptive CSS ---
 st.markdown("""
 <style>
-.sidebar-toggle-btn {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 9999;
-    background: rgba(28, 131, 225, 0.9);
-    border: 1px solid rgba(28, 131, 225, 0.5);
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 44px;
-    min-height: 44px;
+.stApp { background: var(--background-color); }
+.candidate-card {
+    background: var(--background-color);
+    border: 1.5px solid var(--secondary-background-color);
+    border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    padding: 1.7rem 1.25rem 1.05rem 1.25rem;
+    margin-bottom: 1.35rem;
+    transition: box-shadow .25s, border-color .18s;
+    position: relative;
 }
-.sidebar-toggle-btn:hover {
-    background: rgba(28, 131, 225, 1);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+.candidate-card:hover {
+    box-shadow: 0 8px 32px rgba(102,126,234,0.20);
+    border-color: #667eea;
 }
-#sidebar-toggle-container {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 9999;
+.avatar-circle {
+    width: 58px; height: 58px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff; font-weight: 700; font-size: 1.45rem;
+    display: flex; align-items: center; justify-content: center;
+    border: 2.5px solid var(--background-color);
+    margin-bottom: 0.3rem;
+}
+.candidate-name { font-size: 1.2rem; font-weight: 700; color: var(--text-color); }
+.candidate-id { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 0.22rem;}
+.candidate-meta { font-size: 0.85rem; color: var(--text-secondary);}
+.card-divider { border: none; border-top: 1px solid var(--secondary-background-color); margin: 0.7rem 0 0.6rem 0;}
+.card-actions { display: flex; gap: 0.9rem; margin-top: 0.65rem;}
+.card-actions button { flex: 1; }
+.contact-item { font-size: 0.95rem; color: var(--text-color);}
+@media (max-width: 800px) {
+    .candidate-card { padding: 0.9rem 1rem; }
 }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Sidebar Toggle Button (visible only when sidebar is closed) ---
-if not st.session_state.sidebar_open:
-    st.markdown(f"""
-    <div id="sidebar-toggle-container">
-        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
-            {ICON_MENU}
-        </button>
-    </div>
-    <script>
-    function toggleSidebar() {{
-        const elements = parent.document.querySelectorAll('button');
-        const toggleBtn = Array.from(elements).find(btn => btn.innerText.includes('Open Sidebar'));
-        if (toggleBtn) toggleBtn.click();
-    }}
-    </script>
-    """, unsafe_allow_html=True)
+# --- Header ---
+st.markdown("# 📇 Candidate Profiles")
+st.markdown("*Browse and manage all résumés processed by HireScope AI*")
 
-    # This hidden Streamlit button is clicked programmatically
-    if st.button("Open Sidebar", key="hidden_open_sidebar_btn"):
-        st.session_state.sidebar_open = True
+# --- Data ---
+try:
+    all_data = collection.get()
+    metas = all_data.get("metadatas", [])
+    docs = all_data.get("documents", [])
+    all_ids = all_data.get("ids", [])
+except Exception as e:
+    st.error(f"🚨 Failed to load candidate data: {e}")
+    st.stop()
+
+# --- Filter Sidebar ---
+with st.sidebar:
+    st.markdown("## 🔍 Filter Candidates")
+    if st.button("🔄 Reset All Filters", use_container_width=True):
+        st.session_state.clear()
         st.rerun()
+    name_filter = st.text_input("👤 Name", value="")
+    id_filter = st.text_input("🆔 Candidate ID", value="")
+    by_hr = st.text_input("👨‍💼 Uploaded By", value="")
+    keywords = st.text_input("🔍 Keywords", value="")
+    with st.expander("🎯 Advanced Filters"):
+        has_email = st.checkbox("Has Email", value=False)
+        has_phone = st.checkbox("Has Phone", value=False)
+        has_linkedin = st.checkbox("Has LinkedIn", value=False)
 
-# --- Real Sidebar Logic ---
-if st.session_state.sidebar_open:
-    with st.sidebar:
-        col1, col2 = st.columns([0.8, 0.2])
-        with col1:
-            st.markdown("### HireScope")
-        with col2:
-            if st.button("\u2715", key="close_sidebar"):
-                st.session_state.sidebar_open = False
-                st.rerun()
+def matches(meta, doc, summary):
+    doc_str = str(doc).lower() if doc else ""
+    meta_str = str(meta).lower() if meta else ""
+    if name_filter and name_filter.strip():
+        if name_filter.lower() not in meta.get('name','').lower():
+            return False
+    if id_filter and id_filter.strip():
+        if id_filter.lower() not in meta.get('candidate_id','').lower():
+            return False
+    if by_hr and by_hr.strip():
+        if by_hr.lower() not in meta.get('uploaded_by','').lower():
+            return False
+    if keywords and keywords.strip():
+        if keywords.lower() not in doc_str:
+            return False
+    if has_email:
+        if summary and summary.get("email"):
+            pass
+        elif "email" in doc_str or '@' in doc_str:
+            pass
+        else:
+            return False
+    if has_phone:
+        if summary and summary.get("phone"):
+            pass
+        elif "phone" in doc_str or "mobile" in doc_str:
+            pass
+        else:
+            return False
+    if has_linkedin:
+        if summary and summary.get("linkedin"):
+            pass
+        elif "linkedin" in doc_str or "linkedin.com" in doc_str or "/in/" in doc_str:
+            pass
+        else:
+            return False
+    return True
 
-        st.write("This is your sidebar content.")
+# --- Filter candidates and pair with Chroma IDs ---
+filtered_candidates = []
+for i, (meta, doc) in enumerate(zip(metas, docs)):
+    summary = None
+    try:
+        summary = json.loads(doc) if isinstance(doc, str) and doc.strip().startswith("{") else None
+    except Exception:
+        summary = None
+    if matches(meta, doc, summary):
+        filtered_candidates.append({"meta": meta, "doc": doc, "id": all_ids[i] if i < len(all_ids) else meta.get("candidate_id", f"idx_{i}"), "summary": summary})
 
-# --- Main Content ---
-st.title("Main App Content")
-st.write("This area remains visible even when sidebar is closed.")
+# --- Display Empty States ---
+if not metas:
+    st.markdown("""
+    <div class="empty-state">
+        <div class="empty-state-icon">📂</div>
+        <div class="empty-state-title">No Candidates Found</div>
+        <div class="empty-state-text">
+            Start by uploading some résumés using the 'Upload Résumés' page.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+if not filtered_candidates:
+    st.markdown("""
+    <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-title">No Matches Found</div>
+        <div class="empty-state-text">
+            Try adjusting your search criteria or clearing the filters.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# --- Responsive grid ---
+cols = st.columns(2)
+
+for idx, candidate in enumerate(filtered_candidates):
+    meta, doc, chroma_id, summary = candidate["meta"], candidate["doc"], candidate["id"], candidate["summary"]
+    name = meta.get('name', 'Unknown')
+    uploaded_by = meta.get('uploaded_by', 'N/A')
+    upload_date = meta.get('upload_timestamp', 'N/A')
+    candidate_id = meta.get('candidate_id', '')
+    avatar_url = meta.get('avatar_url')
+    initials = "".join([w[0] for w in name.split() if w and w[0].isalpha()]).upper()[:2] or "👤"
+
+    # Parse date
+    display_date = upload_date
+    if upload_date and upload_date != "N/A":
+        parsed_date = None
+        for fmt in ["%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"]:
+            try:
+                parsed_date = datetime.strptime(str(upload_date), fmt)
+                break
+            except: continue
+        if parsed_date:
+            display_date = parsed_date.strftime("%b %d, %Y")
+    else:
+        display_date = "Unknown"
+
+    # Contact info
+    email = summary.get("email") if summary else None
+    phone = summary.get("phone") if summary else None
+    linkedin = summary.get("linkedin") if summary else None
+
+    col = cols[idx % len(cols)]
+    with col:
+        st.markdown('<div class="candidate-card">', unsafe_allow_html=True)
+        avatar_html = f'<img src="{avatar_url}" width="58"/>' if avatar_url else f'<div class="avatar-circle">{initials}</div>'
+        st.markdown(avatar_html, unsafe_allow_html=True)
+        st.markdown(f'<div class="candidate-name">{name}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="candidate-id">ID: <code>{candidate_id}</code></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="candidate-meta">Uploaded by: {uploaded_by} &nbsp;|&nbsp; Date: {display_date}</div>', unsafe_allow_html=True)
+        st.markdown('<hr class="card-divider"/>', unsafe_allow_html=True)
+        # Contact
+        if email or phone or linkedin:
+            st.markdown("**Contact:**")
+            if email: st.markdown(f'<div class="contact-item">📧 <a href="mailto:{email}">{email}</a></div>', unsafe_allow_html=True)
+            if phone: st.markdown(f'<div class="contact-item">📞 {phone}</div>', unsafe_allow_html=True)
+            if linkedin: st.markdown(f'<div class="contact-item">🔗 <a href="{linkedin}" target="_blank">LinkedIn</a></div>', unsafe_allow_html=True)
+        # Actions
+        st.markdown('<div class="card-actions">', unsafe_allow_html=True)
+        view_summary = st.button("📄 View Summary", key=f"view_{idx}")
+        delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}", type="secondary")
+        st.markdown('</div>', unsafe_allow_html=True)
+        # View modal
+        if view_summary:
+            st.markdown(f"""
+            <div class="summary-modal">
+                <h4 style="color: var(--text-color); margin-bottom: 1rem;">📄 Candidate Summary</h4>
+                <div class="summary-content">{json.dumps(summary, indent=2, ensure_ascii=False) if summary else doc}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        # Delete
+        if delete_candidate:
+            st.warning(f"⚠️ Delete **{name}**? This action cannot be undone.")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("✅ Confirm Delete", key=f"confirm_{idx}"):
+                    try:
+                        collection.delete(ids=[str(chroma_id)])
+                        try: collection.persist()
+                        except: pass
+                        st.success("✅ Deleted!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Failed to delete: {e}")
+            with c2:
+                if st.button("❌ Cancel", key=f"cancel_{idx}"):
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Footer ---
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; color: var(--text-secondary); font-size: 0.88rem; padding: 1rem 0;">
+    HireScope Candidate Management • Built with ❤️ using Streamlit
+</div>
+""", unsafe_allow_html=True)
