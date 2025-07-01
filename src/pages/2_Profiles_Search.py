@@ -90,17 +90,17 @@ div[data-testid="stContainer"] {
     background: var(--bg-primary);
     border: 1px solid var(--border-color) !important;
     border-radius: var(--radius-lg) !important;
-    padding: 1.25rem !important;
+    padding: 1.5rem !important;
     margin-bottom: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
 }
 
 div[data-testid="stContainer"]:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-4px);
     border-color: var(--primary-color) !important;
 }
 
@@ -110,41 +110,41 @@ div[data-testid="stContainer"]::before {
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 4px;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 }
 
 /* Better spacing for card content */
 div[data-testid="stContainer"] > div {
-    margin-bottom: 0.75rem !important;
+    margin-bottom: 1rem !important;
 }
 
 div[data-testid="stContainer"] > div:last-child {
     margin-bottom: 0 !important;
 }
 
-/* Avatar styling - updated for compact layout */
+/* Avatar styling - updated for better layout */
 .avatar-circle {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     font-weight: 600;
-    border: 2px solid var(--bg-primary);
-    box-shadow: var(--shadow-sm);
+    border: 3px solid var(--bg-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     margin: 0;
 }
 
-/* Streamlit image styling within containers - compact version */
+/* Streamlit image styling within containers */
 div[data-testid="stContainer"] img {
     border-radius: 50%;
-    border: 2px solid var(--bg-primary);
-    box-shadow: var(--shadow-sm);
+    border: 3px solid var(--bg-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     object-fit: cover;
 }
 
@@ -439,9 +439,11 @@ st.markdown("*Browse and manage all résumés processed by HireScope AI*")
 try:
     res = collection.get(include=["metadatas", "documents"])
     metas, docs = res["metadatas"], res["documents"]
-    # Get IDs separately if available
+    # Get all data including IDs using a different approach
     try:
-        all_ids = res.get("ids", [])
+        # Try to get all items with IDs
+        all_data = collection.get()
+        all_ids = all_data.get("ids", [])
     except:
         all_ids = []
 except Exception as e:
@@ -482,11 +484,34 @@ if metas:
         """, unsafe_allow_html=True)
     
     with col4:
-        # Recent uploads (last 7 days - simplified)
-        recent = len([m for m in metas if 'upload_timestamp' in m])
+        # Recent uploads - count profiles uploaded in the last 7 days
+        from datetime import datetime, timedelta
+        recent_count = 0
+        cutoff_date = datetime.now() - timedelta(days=7)
+        
+        for meta in metas:
+            upload_date = meta.get('upload_timestamp')
+            if upload_date:
+                try:
+                    if isinstance(upload_date, str):
+                        # Try different date formats
+                        for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"]:
+                            try:
+                                parsed_date = datetime.strptime(upload_date, fmt)
+                                if parsed_date >= cutoff_date:
+                                    recent_count += 1
+                                break
+                            except ValueError:
+                                continue
+                    elif hasattr(upload_date, 'strftime'):  # datetime object
+                        if upload_date >= cutoff_date:
+                            recent_count += 1
+                except:
+                    continue
+        
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{recent}</div>
+            <div class="stat-number">{recent_count}</div>
             <div class="stat-label">Recent Uploads</div>
         </div>
         """, unsafe_allow_html=True)
@@ -495,27 +520,32 @@ if metas:
 with st.sidebar:
     st.markdown("## 🔍 Filter Candidates")
     
-    name_filter = st.text_input("👤 Candidate Name", placeholder="Enter name...")
-    id_filter = st.text_input("🆔 Candidate ID", placeholder="Enter ID...")
-    by_hr = st.text_input("👨‍💼 Uploaded By", placeholder="HR user...")
-    keywords = st.text_input("🔍 Keywords", placeholder="Skills, keywords...")
+    # Check if reset was clicked
+    if st.button("🔄 Reset Filters", use_container_width=True):
+        # Clear session state for filters
+        for key in ['name_filter', 'id_filter', 'by_hr', 'keywords', 'has_email', 'has_phone', 'has_linkedin']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()
+    
+    name_filter = st.text_input("👤 Candidate Name", placeholder="Enter name...", key="name_filter")
+    id_filter = st.text_input("🆔 Candidate ID", placeholder="Enter ID...", key="id_filter")
+    by_hr = st.text_input("👨‍💼 Uploaded By", placeholder="HR user...", key="by_hr")
+    keywords = st.text_input("🔍 Keywords", placeholder="Skills, keywords...", key="keywords")
     
     # Advanced filters
     with st.expander("🎯 Advanced Filters"):
-        has_email = st.checkbox("Has Email")
-        has_phone = st.checkbox("Has Phone")
-        has_linkedin = st.checkbox("Has LinkedIn")
-    
-    if st.button("🔄 Reset Filters", use_container_width=True):
-        st.rerun()
+        has_email = st.checkbox("Has Email", key="has_email")
+        has_phone = st.checkbox("Has Phone", key="has_phone")
+        has_linkedin = st.checkbox("Has LinkedIn", key="has_linkedin")
 
 def matches(meta, doc):
     # Basic text filters
     basic_match = (
-        (name_filter.lower() in meta.get('name', '').lower() if name_filter else True) and
-        (id_filter.lower() in meta.get('candidate_id', '').lower() if id_filter else True) and
-        (by_hr.lower() in meta.get('uploaded_by', '').lower() if by_hr else True) and
-        (keywords.lower() in doc.lower() if keywords else True)
+        (not name_filter or name_filter.lower() in meta.get('name', '').lower()) and
+        (not id_filter or id_filter.lower() in meta.get('candidate_id', '').lower()) and
+        (not by_hr or by_hr.lower() in meta.get('uploaded_by', '').lower()) and
+        (not keywords or keywords.lower() in doc.lower())
     )
     
     if not basic_match:
@@ -525,16 +555,20 @@ def matches(meta, doc):
     if has_email:
         email_found = (
             'email' in doc.lower() or 
+            '@' in doc or  # Look for email patterns
             any('email' in str(value).lower() for value in meta.values() if value)
         )
         if not email_found:
             return False
             
     if has_phone:
+        import re
         phone_found = (
             'phone' in doc.lower() or 
-            any('phone' in str(value).lower() for value in meta.values() if value) or
-            any(char.isdigit() for char in doc)  # Check for numbers in document
+            'mobile' in doc.lower() or
+            'contact' in doc.lower() or
+            re.search(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', doc) or  # Phone number pattern
+            any('phone' in str(value).lower() for value in meta.values() if value)
         )
         if not phone_found:
             return False
@@ -542,6 +576,7 @@ def matches(meta, doc):
     if has_linkedin:
         linkedin_found = (
             'linkedin' in doc.lower() or 
+            'linkedin.com' in doc.lower() or
             any('linkedin' in str(value).lower() for value in meta.values() if value)
         )
         if not linkedin_found:
@@ -652,26 +687,28 @@ for idx, (meta, doc, original_idx) in enumerate(filtered_candidates):
                 # st.caption("⚠️ Using current time as upload timestamp was not available")
             
             # Main card header with avatar and name
-            avatar_col, info_col = st.columns([1, 5])
+            avatar_col, info_col = st.columns([1, 4])
             
             with avatar_col:
                 if avatar_url:
-                    st.image(avatar_url, width=56)
+                    st.image(avatar_url, width=64)
                 else:
                     st.markdown(f"""
-                    <div class="avatar-circle" style="width: 56px; height: 56px; font-size: 1.2rem;">{initials}</div>
+                    <div class="avatar-circle" style="width: 64px; height: 64px; font-size: 1.5rem;">{initials}</div>
                     """, unsafe_allow_html=True)
             
             with info_col:
                 st.markdown(f"### {name}")
                 st.markdown(f"**ID:** `{candidate_id}`")
-                st.markdown(f"**Uploaded by:** {uploaded_by} • {display_date}")
+                st.markdown(f"**Uploaded by:** {uploaded_by}")
+                st.markdown(f"**Date:** {display_date}")
             
             # Compact contact information in a clean layout
             if email or phone or linkedin:
                 st.markdown("---")
+                st.markdown("**Contact Information:**")
                 
-                # Contact info in horizontal layout
+                # Contact info in clean layout
                 contact_items = []
                 if email:
                     contact_items.append(f"📧 [{email}](mailto:{email})")
@@ -680,8 +717,9 @@ for idx, (meta, doc, original_idx) in enumerate(filtered_candidates):
                 if linkedin:
                     contact_items.append(f"🔗 [LinkedIn]({linkedin})")
                 
-                # Display contact info in a single row or wrap naturally
-                st.markdown(" • ".join(contact_items))
+                # Display contact info
+                for item in contact_items:
+                    st.markdown(f"- {item}")
             
             # Clean action buttons at the bottom
             st.markdown("---")
@@ -712,17 +750,53 @@ for idx, (meta, doc, original_idx) in enumerate(filtered_candidates):
                 with c1:
                     if st.button("✅ Confirm Delete", key=f"confirm_{idx}", type="primary"):
                         try:
-                            # Try different deletion methods
-                            if actual_id:
-                                collection.delete(ids=[actual_id])
-                            else:
-                                # Fallback: delete by metadata match
-                                collection.delete(where={"candidate_id": candidate_id})
+                            # Try different deletion methods in order of preference
+                            deleted = False
                             
-                            if hasattr(chroma_client, "persist"):
-                                chroma_client.persist()
-                            st.success(f"✅ Successfully deleted {name}")
-                            st.rerun()
+                            # Method 1: Try using the actual ChromaDB ID
+                            if actual_id and actual_id != candidate_id:
+                                try:
+                                    collection.delete(ids=[actual_id])
+                                    deleted = True
+                                except Exception as e1:
+                                    st.write(f"Method 1 failed: {e1}")
+                            
+                            # Method 2: Try using candidate_id as ChromaDB ID
+                            if not deleted and candidate_id:
+                                try:
+                                    collection.delete(ids=[candidate_id])
+                                    deleted = True
+                                except Exception as e2:
+                                    st.write(f"Method 2 failed: {e2}")
+                            
+                            # Method 3: Try metadata-based deletion
+                            if not deleted:
+                                try:
+                                    collection.delete(where={"candidate_id": candidate_id})
+                                    deleted = True
+                                except Exception as e3:
+                                    st.write(f"Method 3 failed: {e3}")
+                            
+                            # Method 4: Try deleting by name (last resort)
+                            if not deleted:
+                                try:
+                                    collection.delete(where={"name": name})
+                                    deleted = True
+                                except Exception as e4:
+                                    st.write(f"Method 4 failed: {e4}")
+                            
+                            if deleted:
+                                # Persist changes
+                                try:
+                                    if hasattr(chroma_client, "persist"):
+                                        chroma_client.persist()
+                                except:
+                                    pass
+                                st.success(f"✅ Successfully deleted {name}")
+                                st.rerun()
+                            else:
+                                st.error("❌ All deletion methods failed")
+                                
                         except Exception as e:
                             st.error(f"❌ Error deleting candidate: {e}")
                             # Show debug info only on error
@@ -730,6 +804,8 @@ for idx, (meta, doc, original_idx) in enumerate(filtered_candidates):
                                 st.write(f"Attempted deletion with ID: {actual_id}")
                                 st.write(f"Candidate ID from metadata: {candidate_id}")
                                 st.write(f"Available IDs: {len(candidate_ids) if candidate_ids else 0}")
+                                st.write(f"All IDs length: {len(all_ids)}")
+                                st.write(f"Name: {name}")
                 with c2:
                     if st.button("❌ Cancel", key=f"cancel_{idx}"):
                         st.rerun()
