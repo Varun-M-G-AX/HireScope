@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Modern theme-adaptive CSS ---
+# --- CSS ---
 st.markdown("""
 <style>
 .stApp { background: var(--background-color); }
@@ -62,7 +62,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- Header ---
 st.markdown("# 📇 Candidate Profiles")
 st.markdown("*Browse and manage all résumés processed by HireScope AI*")
 
@@ -93,7 +92,6 @@ with st.sidebar:
 
 def matches(meta, doc, summary):
     doc_str = str(doc).lower() if doc else ""
-    meta_str = str(meta).lower() if meta else ""
     if name_filter and name_filter.strip():
         if name_filter.lower() not in meta.get('name','').lower():
             return False
@@ -106,27 +104,19 @@ def matches(meta, doc, summary):
     if keywords and keywords.strip():
         if keywords.lower() not in doc_str:
             return False
+    # ADVANCED FILTERS
     if has_email:
-        if summary and summary.get("email"):
-            pass
-        elif "email" in doc_str or '@' in doc_str:
-            pass
-        else:
-            return False
+        if summary and summary.get("email"): return True
+        if "email" in doc_str or '@' in doc_str: return True
+        return False
     if has_phone:
-        if summary and summary.get("phone"):
-            pass
-        elif "phone" in doc_str or "mobile" in doc_str:
-            pass
-        else:
-            return False
+        if summary and summary.get("phone"): return True
+        if "phone" in doc_str or "mobile" in doc_str: return True
+        return False
     if has_linkedin:
-        if summary and summary.get("linkedin"):
-            pass
-        elif "linkedin" in doc_str or "linkedin.com" in doc_str or "/in/" in doc_str:
-            pass
-        else:
-            return False
+        if summary and summary.get("linkedin"): return True
+        if "linkedin" in doc_str or "linkedin.com" in doc_str or "/in/" in doc_str: return True
+        return False
     return True
 
 # --- Filter candidates and pair with Chroma IDs ---
@@ -215,10 +205,13 @@ for candidate in filtered_candidates:
                 if email: st.markdown(f'<div class="contact-item">📧 <a href="mailto:{email}">{email}</a></div>', unsafe_allow_html=True)
                 if phone: st.markdown(f'<div class="contact-item">📞 {phone}</div>', unsafe_allow_html=True)
                 if linkedin: st.markdown(f'<div class="contact-item">🔗 <a href="{linkedin}" target="_blank">LinkedIn</a></div>', unsafe_allow_html=True)
-            # Actions
+            # Actions (INSIDE card)
             st.markdown('<div class="card-actions">', unsafe_allow_html=True)
-            view_summary = st.button("📄 View Summary", key=f"view_{chroma_id}")
-            delete_candidate = st.button("🗑️ Delete", key=f"delete_{chroma_id}", type="secondary")
+            colA, colB = st.columns(2)
+            with colA:
+                view_summary = st.button("📄 View Summary", key=f"view_{chroma_id}")
+            with colB:
+                delete_candidate = st.button("🗑️ Delete", key=f"delete_{chroma_id}", type="secondary")
             st.markdown('</div>', unsafe_allow_html=True)
             # View modal
             if view_summary:
