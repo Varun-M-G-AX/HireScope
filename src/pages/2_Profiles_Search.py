@@ -36,13 +36,26 @@ st.markdown("""
     border: 2.5px solid var(--background-color);
     margin-bottom: 0.3rem;
 }
-.candidate-name { font-size: 1.2rem; font-weight: 700; color: var(--text-color); }
+.candidate-name { font-size: 1.2rem; font-weight: 700; color: var(--text-color); margin-bottom: 0.1rem;}
 .candidate-id { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 0.22rem;}
 .candidate-meta { font-size: 0.85rem; color: var(--text-secondary);}
 .card-divider { border: none; border-top: 1px solid var(--secondary-background-color); margin: 0.7rem 0 0.6rem 0;}
-.card-actions { display: flex; gap: 0.9rem; margin-top: 0.65rem;}
-.card-actions button { flex: 1; }
+.card-actions { display: flex; gap: 0.9rem; margin-top: 0.65rem; }
+.card-actions .stButton { flex: 1; }
 .contact-item { font-size: 0.95rem; color: var(--text-color);}
+.summary-modal {
+    background: var(--secondary-background-color);
+    border-radius: 15px;
+    border: 1.5px solid var(--secondary-background-color);
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.8rem 1.2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.97rem;
+    color: var(--text-color);
+    max-height: 400px;
+    overflow: auto;
+}
 @media (max-width: 800px) {
     .candidate-card { padding: 0.9rem 1rem; }
 }
@@ -125,7 +138,7 @@ for i, (meta, doc) in enumerate(zip(metas, docs)):
     except Exception:
         summary = None
     if matches(meta, doc, summary):
-        filtered_candidates.append({"meta": meta, "doc": doc, "id": all_ids[i] if i < len(all_ids) else meta.get("candidate_id", f"idx_{i}"), "summary": summary})
+        filtered_candidates.append({"meta": meta, "doc": doc, "id": all_ids[i], "summary": summary, "idx": i})
 
 # --- Display Empty States ---
 if not metas:
@@ -154,19 +167,19 @@ if not filtered_candidates:
 # --- Responsive grid ---
 cols = st.columns(2)
 
-for idx, candidate in enumerate(filtered_candidates):
-    meta, doc, chroma_id, summary = candidate["meta"], candidate["doc"], candidate["id"], candidate["summary"]
+for candidate in filtered_candidates:
+    meta, doc, chroma_id, summary, idx = candidate["meta"], candidate["doc"], candidate["id"], candidate["summary"], candidate["idx"]
     name = meta.get('name', 'Unknown')
-    uploaded_by = meta.get('uploaded_by', 'N/A')
-    upload_date = meta.get('upload_timestamp', 'N/A')
+    uploaded_by = meta.get('uploaded_by', 'Unknown')
+    upload_date = meta.get('upload_timestamp')
     candidate_id = meta.get('candidate_id', '')
     avatar_url = meta.get('avatar_url')
     initials = "".join([w[0] for w in name.split() if w and w[0].isalpha()]).upper()[:2] or "👤"
 
-    # Parse date
-    display_date = upload_date
-    if upload_date and upload_date != "N/A":
-        parsed_date = None
+    # Parse date robustly, fallback to today if missing or wrong
+    display_date = "Unknown"
+    parsed_date = None
+    if upload_date and str(upload_date).lower() not in ["n/a", "none", ""]:
         for fmt in ["%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"]:
             try:
                 parsed_date = datetime.strptime(str(upload_date), fmt)
@@ -174,60 +187,65 @@ for idx, candidate in enumerate(filtered_candidates):
             except: continue
         if parsed_date:
             display_date = parsed_date.strftime("%b %d, %Y")
+        else:
+            display_date = datetime.now().strftime("%b %d, %Y")
     else:
-        display_date = "Unknown"
+        display_date = datetime.now().strftime("%b %d, %Y")
 
     # Contact info
     email = summary.get("email") if summary else None
     phone = summary.get("phone") if summary else None
     linkedin = summary.get("linkedin") if summary else None
 
+    # --- Card rendering, all content and buttons inside ---
     col = cols[idx % len(cols)]
     with col:
-        st.markdown('<div class="candidate-card">', unsafe_allow_html=True)
-        avatar_html = f'<img src="{avatar_url}" width="58"/>' if avatar_url else f'<div class="avatar-circle">{initials}</div>'
-        st.markdown(avatar_html, unsafe_allow_html=True)
-        st.markdown(f'<div class="candidate-name">{name}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="candidate-id">ID: <code>{candidate_id}</code></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="candidate-meta">Uploaded by: {uploaded_by} &nbsp;|&nbsp; Date: {display_date}</div>', unsafe_allow_html=True)
-        st.markdown('<hr class="card-divider"/>', unsafe_allow_html=True)
-        # Contact
-        if email or phone or linkedin:
-            st.markdown("**Contact:**")
-            if email: st.markdown(f'<div class="contact-item">📧 <a href="mailto:{email}">{email}</a></div>', unsafe_allow_html=True)
-            if phone: st.markdown(f'<div class="contact-item">📞 {phone}</div>', unsafe_allow_html=True)
-            if linkedin: st.markdown(f'<div class="contact-item">🔗 <a href="{linkedin}" target="_blank">LinkedIn</a></div>', unsafe_allow_html=True)
-        # Actions
-        st.markdown('<div class="card-actions">', unsafe_allow_html=True)
-        view_summary = st.button("📄 View Summary", key=f"view_{idx}")
-        delete_candidate = st.button("🗑️ Delete", key=f"delete_{idx}", type="secondary")
-        st.markdown('</div>', unsafe_allow_html=True)
-        # View modal
-        if view_summary:
-            st.markdown(f"""
-            <div class="summary-modal">
-                <h4 style="color: var(--text-color); margin-bottom: 1rem;">📄 Candidate Summary</h4>
-                <div class="summary-content">{json.dumps(summary, indent=2, ensure_ascii=False) if summary else doc}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        # Delete
-        if delete_candidate:
-            st.warning(f"⚠️ Delete **{name}**? This action cannot be undone.")
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("✅ Confirm Delete", key=f"confirm_{idx}"):
-                    try:
-                        collection.delete(ids=[str(chroma_id)])
-                        try: collection.persist()
-                        except: pass
-                        st.success("✅ Deleted!")
+        with st.container():
+            st.markdown('<div class="candidate-card">', unsafe_allow_html=True)
+            # Avatar and Name
+            avatar_html = f'<img src="{avatar_url}" width="58"/>' if avatar_url else f'<div class="avatar-circle">{initials}</div>'
+            st.markdown(avatar_html, unsafe_allow_html=True)
+            st.markdown(f'<div class="candidate-name">{name}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="candidate-id">ID: <code>{candidate_id}</code></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="candidate-meta">Uploaded by: {uploaded_by} &nbsp;|&nbsp; Date: {display_date}</div>', unsafe_allow_html=True)
+            st.markdown('<hr class="card-divider"/>', unsafe_allow_html=True)
+            # Contact
+            if email or phone or linkedin:
+                st.markdown("**Contact:**")
+                if email: st.markdown(f'<div class="contact-item">📧 <a href="mailto:{email}">{email}</a></div>', unsafe_allow_html=True)
+                if phone: st.markdown(f'<div class="contact-item">📞 {phone}</div>', unsafe_allow_html=True)
+                if linkedin: st.markdown(f'<div class="contact-item">🔗 <a href="{linkedin}" target="_blank">LinkedIn</a></div>', unsafe_allow_html=True)
+            # Actions
+            st.markdown('<div class="card-actions">', unsafe_allow_html=True)
+            view_summary = st.button("📄 View Summary", key=f"view_{chroma_id}")
+            delete_candidate = st.button("🗑️ Delete", key=f"delete_{chroma_id}", type="secondary")
+            st.markdown('</div>', unsafe_allow_html=True)
+            # View modal
+            if view_summary:
+                st.markdown(f"""
+                <div class="summary-modal">
+                    <h4 style="color: var(--text-color); margin-bottom: 1rem;">📄 Candidate Summary</h4>
+                    <div class="summary-content">{json.dumps(summary, indent=2, ensure_ascii=False) if summary else doc}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            # Delete confirm
+            if delete_candidate:
+                st.warning(f"⚠️ Delete **{name}**? This action cannot be undone.")
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button("✅ Confirm Delete", key=f"confirm_{chroma_id}"):
+                        try:
+                            collection.delete(ids=[str(chroma_id)])
+                            try: collection.persist()
+                            except: pass
+                            st.success("✅ Deleted!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Failed to delete: {e}")
+                with c2:
+                    if st.button("❌ Cancel", key=f"cancel_{chroma_id}"):
                         st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Failed to delete: {e}")
-            with c2:
-                if st.button("❌ Cancel", key=f"cancel_{idx}"):
-                    st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
 # --- Footer ---
 st.markdown("---")
