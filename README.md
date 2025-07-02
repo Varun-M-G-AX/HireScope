@@ -4,7 +4,7 @@
 
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-blue?logo=streamlit)](https://streamlit.io/)
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-VectorDB-yellow)](https://www.trychroma.com/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT-4o-green)](https://openai.com/gpt-4o)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT-4o-green)](Hello GPT-4o | OpenAI https://share.google/VLrOImpBBgO1fAsru)
 
 ---
 
